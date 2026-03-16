@@ -1,0 +1,32 @@
+{
+    "section1": {
+        "files": [
+            {
+                "url": "assets/istiklalcaddesi.png",
+                "type": "image",
+                "key": "istiklalcaddesi_1"
+            },
+            {
+                "url": "assets/kaykaylikiz.png",
+                "frameConfig": {
+                    "frameWidth": 344,
+                    "frameHeight": 256,
+                    "startFrame": 0,
+                    "endFrame": 11,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykaylikiz"
+            }
+        ]
+    },
+    "meta": {
+        "app": "Phaser Editor 2D - Asset Pack Editor",
+        "contentType": "phasereditor2d.pack.core.AssetContentType",
+        "url": "https://phasereditor2d.com",
+        "version": 2,
+        "showAllFilesInBlocks": false,
+        "visible": true
+    }
+}
