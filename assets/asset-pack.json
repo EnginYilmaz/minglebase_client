@@ -10,9 +10,9 @@
                 "url": "assets/kaykaylikiz.png",
                 "frameConfig": {
                     "frameWidth": 344,
-                    "frameHeight": 256,
+                    "frameHeight": 255,
                     "startFrame": 0,
-                    "endFrame": 11,
+                    "endFrame": 15,
                     "spacing": 0,
                     "margin": 0
                 },

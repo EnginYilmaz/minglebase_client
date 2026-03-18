@@ -36,6 +36,7 @@ export default class Level extends Phaser.Scene {
   myData = null;
   otherPlayers = {};
   lastSent = 0;
+  carpisiyor = false; // Çarpışma animasyonu spam'ını önler
 
   init(data) {
     this.room = (data && data.room) ? data.room : null;
@@ -73,6 +74,15 @@ export default class Level extends Phaser.Scene {
         end: 11,
       }),
       frameRate: 10,
+      repeat: 0,
+    });
+    this.anims.create({
+      key: "kaykaydan_dusme",
+      frames: this.anims.generateFrameNumbers("kaykaylikiz", {
+        start: 12,
+        end: 15,
+      }),
+      frameRate: 6,
       repeat: 0,
     });
 
@@ -175,8 +185,12 @@ export default class Level extends Phaser.Scene {
 
   // Rakip kaykaylı sprite'ını oluştur (mavi tint ile ayırt edilir)
   createOtherPlayer(playerData) {
+    // Sade sprite kullanıyoruz — fizik yok.
+    // Sunucu pozisyonu her 50ms'de setPosition ile geldiği için fizik motoru
+    // collision'ı zaten çözemiyor (teleport ediyor). Manuel yaklaşım daha sağlıklı.
     const sprite = this.add.sprite(playerData.x, playerData.y, "kaykaylikiz", 0);
     sprite.setScale(0.4);
+    sprite.setOrigin(0.5, 0.5);
     sprite.setTint(0x4499ff); // Mavi → rakip oyuncu
     if (playerData.anim) sprite.play(playerData.anim, true);
     this.otherPlayers[playerData.sessionId] = sprite;
@@ -272,6 +286,38 @@ export default class Level extends Phaser.Scene {
         this.dur();
       }
     }
+
+    // ── Manuel çarpışma: Diğer oyuncularla yan yana gelince it ──────
+    // Sprite 344px geniş, 0.4 scale ile ~138px. Ama karakterin kendisi görselin ortasında daha dar.
+    // 60px → iki karakter fiilen temas ettiğinde tetiklenir.
+    const hitRadius = 60;
+    for (const id in this.otherPlayers) {
+      const other = this.otherPlayers[id];
+      const dx = this.karakterim.x - other.x;
+      const dy = this.karakterim.y - other.y;
+      // Sadece aynı yükseklikte yan yana geldiklerinde (üst üste zıplama hali hariç)
+      if (Math.abs(dy) < 60 && Math.abs(dx) < hitRadius) {
+        const yon = dx >= 0 ? 1 : -1;
+        const overlap = hitRadius - Math.abs(dx);
+        this.karakterim.x += yon * overlap; // Anlık konum düzeltmesi
+        this.karakterim.body.setVelocityX(
+          this.karakterim.body.velocity.x + yon * 200
+        );
+        // Çarpışma animasyonu — aynı anda birden fazla tetiklenmesin
+        if (!this.carpisiyor) {
+          this.carpisiyor = true;
+          this.karakterim
+            .play("kaykaydan_dusme", true)
+            .chain("kaykay_stabilize");
+          // animationcomplete yerine sabit süre ile unlock — animasyon yarıda
+          // kesilse bile carpisiyor sonsuza kalmaz
+          this.time.delayedCall(1200, () => {
+            this.carpisiyor = false;
+          });
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────────────
   }
 
   /* END-USER-CODE */

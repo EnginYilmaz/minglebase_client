@@ -2,8 +2,8 @@
 
 import { Client } from "https://esm.sh/@colyseus/sdk@0.17.17";
 
-//const SERVER_URL = "ws://localhost:2567";
-const SERVER_URL = "https://nl-ams-86abf15c.colyseus.cloud";
+const SERVER_URL = "ws://localhost:2567";
+// const SERVER_URL = "https://nl-ams-86abf15c.colyseus.cloud";
 export default class Waiting extends Phaser.Scene {
     constructor() {
         super("Waiting");
