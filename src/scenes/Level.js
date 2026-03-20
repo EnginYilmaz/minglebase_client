@@ -37,6 +37,7 @@ export default class Level extends Phaser.Scene {
   otherPlayers = {};
   lastSent = 0;
   carpisiyor = false; // Çarpışma animasyonu spam'ını önler
+  hareketCekiyor = false; // hareket_cek animasyonu bitene kadar kaykay_sur'u bloklar
 
   init(data) {
     this.room = (data && data.room) ? data.room : null;
@@ -48,9 +49,9 @@ export default class Level extends Phaser.Scene {
     // Kaykaylı kız animasyonunu oluştur
     this.anims.create({
       key: "kaykay_sur",
-      frames: this.anims.generateFrameNumbers("kaykaylikiz", {
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
         start: 0,
-        end: 3,
+        end: 15,
       }),
       frameRate: 10,
       repeat: 0,
@@ -59,9 +60,20 @@ export default class Level extends Phaser.Scene {
     // Eğilme (çömelme) animasyonunu oluştur
     this.anims.create({
       key: "kaykay_cok",
-      frames: this.anims.generateFrameNumbers("kaykaylikiz", {
-        start: 4,
-        end: 5,
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 25,
+        end:28,
+      }),
+      frameRate: 7,
+      repeat: 0,
+    });
+
+        // Eğilme (çömelme) animasyonunu oluştur
+    this.anims.create({
+      key: "kaykay_dogrul",
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 28,
+        end: 31,
       }),
       frameRate: 10,
       repeat: 0,
@@ -69,32 +81,43 @@ export default class Level extends Phaser.Scene {
 
     this.anims.create({
       key: "kaykay_ziplama",
-      frames: this.anims.generateFrameNumbers("kaykaylikiz", {
-        start: 6,
-        end: 11,
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 32,
+        end: 47,
       }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "kaykaydan_dusme",
-      frames: this.anims.generateFrameNumbers("kaykaylikiz", {
-        start: 12,
-        end: 15,
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 48,
+        end: 63,
       }),
       frameRate: 6,
       repeat: 0,
     });
 
     this.anims.create({
-      key: "kaykay_stabilize",
-      frames: this.anims.generateFrameNumbers("kaykaylikiz", {
-        start: 0,
-        end: 2,
+      key: "kaykay_hareket_cekme",
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 16,
+        end: 31,
       }),
       frameRate: 10,
       repeat: 0,
     });
+
+    this.anims.create({
+      key: "kaykay_stabilize",
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 0,
+        end: 15,
+      }),
+      frameRate: 10,
+      repeat: 0,
+    });
+
     // Arkaplanı ekle (Orijinal boyutunda kalsın, kamerayı zoom ile ayarlayacağız)
     this.bg = this.add.image(0, 0, "istiklalcaddesi_1").setOrigin(0, 0);
     this.children.sendToBack(this.bg); // En altta kalsın
@@ -108,21 +131,27 @@ export default class Level extends Phaser.Scene {
     this.karakterim = this.physics.add.sprite(
       spawnX,
       80,
-      "kaykaylikiz",
+      "kaykayli_kiz",
       0,
     );
 
     // Origin'i (0.5, 0.5) yani merkeze geri alalım (Bunu silmek varsayılanı kullanmaktır)
     // Böylece kamera kızı takip ederken karakter tam ekranın ortasında kalır.
-    this.karakterim.setOrigin(0.5, 0.5);
     // --------------------------------------------------
 
     // Animasyonu oynatmaya başlatıyoruz
 
-    // Yeni görsel oldukça büyük (344x256), ekrana sığması için 0.4 oranına küçülttüm (istenirse değişebilir)
+    // Yeni görsel oldukça büyük, ekrana sığması için 0.4 oranına küçülttüm (istenirse değişebilir)
     this.karakterim.setScale(0.4);
+    // setOrigin'i setScale'den SONRA çağırıyoruz ki displayOrigin doğru hesaplansın
+    this.karakterim.setOrigin(0.5, 0.5);
 
     if (this.karakterim.body) {
+      // Fizik gövdesini karakterin görsel boyutuna sığacak şekilde küçült
+      // Frame 156x327, karakter görseli frame'in ortasında ~80x280 px civarı
+      this.karakterim.body.setSize(80, 280);
+      this.karakterim.body.setOffset(38, 40);
+
       this.karakterim.body.setGravityY(600);
       this.karakterim.setBounce(0.3);
       this.karakterim.setCollideWorldBounds(true);
@@ -133,6 +162,7 @@ export default class Level extends Phaser.Scene {
     }
 
     this.cursors = this.input.keyboard.createCursorKeys();
+    this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
 
     // 1. GÖRÜNTÜ ALANINI DOLDUR: Oyun ekranı 1920x1080.
     // O yüzden 489 yüksekliğindeki arkaplanı ve kızı dev ekrana yaklaştırmak için
@@ -188,7 +218,7 @@ export default class Level extends Phaser.Scene {
     // Sade sprite kullanıyoruz — fizik yok.
     // Sunucu pozisyonu her 50ms'de setPosition ile geldiği için fizik motoru
     // collision'ı zaten çözemiyor (teleport ediyor). Manuel yaklaşım daha sağlıklı.
-    const sprite = this.add.sprite(playerData.x, playerData.y, "kaykaylikiz", 0);
+    const sprite = this.add.sprite(playerData.x, playerData.y, "kaykayli_kiz", 0);
     sprite.setScale(0.4);
     sprite.setOrigin(0.5, 0.5);
     sprite.setTint(0x4499ff); // Mavi → rakip oyuncu
@@ -199,6 +229,16 @@ export default class Level extends Phaser.Scene {
     this.karakterim.stop();
     this.karakterim.setAccelerationX(0); // Motor gücünü kes
     this.duruyor = true;
+  }
+  hareket_cek() {
+    if (this.duruyor) return; // Duruyorsa hareket çekemez
+    if (this.hareketCekiyor) return;
+    this.hareketCekiyor = true;
+    this.karakterim.setVelocityY(-350);
+    this.karakterim.play("kaykay_hareket_cekme", true).chain("kaykay_stabilize");
+    this.time.delayedCall(1800, () => {
+      this.hareketCekiyor = false;
+    });
   }
   git(yon) {
     if (!this.adimlayabilir) {
@@ -221,7 +261,7 @@ export default class Level extends Phaser.Scene {
       : this.karakterim.setVelocityX(mevcutHiz + 250);
 
     this.karakterim.flipX = yon; // Sağa veya sola döner
-    if (this.karakterim.body.blocked.down) {
+    if (this.karakterim.body.blocked.down && !this.hareketCekiyor) {
       this.karakterim.play("kaykay_sur", true); // Yerdeyken animasyon
     }
   }
@@ -260,7 +300,9 @@ export default class Level extends Phaser.Scene {
       }
     }
     // Arkaplan artık sabit değil, kamera ile akıyor
-
+    if (Phaser.Input.Keyboard.JustDown(this.keyA)) {
+      this.hareket_cek();
+    }
     if (this.cursors.up.isDown && this.karakterim.body.blocked.down) {
       this.zipla(); // Zıplama kuvveti
     }
@@ -306,14 +348,16 @@ export default class Level extends Phaser.Scene {
         // Çarpışma animasyonu — aynı anda birden fazla tetiklenmesin
         if (!this.carpisiyor) {
           this.carpisiyor = true;
-          this.karakterim
-            .play("kaykaydan_dusme", true)
-            .chain("kaykay_stabilize");
-          // animationcomplete yerine sabit süre ile unlock — animasyon yarıda
-          // kesilse bile carpisiyor sonsuza kalmaz
-          this.time.delayedCall(1200, () => {
-            this.carpisiyor = false;
-          });
+          const hiz = Math.abs(this.karakterim.body.velocity.x);
+          if (hiz >= 150) {
+            // Yüksek hız → şiddetli düşme
+            this.karakterim.play("kaykaydan_dusme", true).chain("kaykay_stabilize");
+            this.time.delayedCall(1200, () => { this.carpisiyor = false; });
+          } else {
+            // Düşük hız → hafif sarsılma
+            this.karakterim.play("kaykay_cok", true).chain("kaykay_dogrul");
+            this.time.delayedCall(600, () => { this.carpisiyor = false; });
+          }
         }
       }
     }

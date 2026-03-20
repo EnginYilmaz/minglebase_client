@@ -7,17 +7,17 @@
                 "key": "istiklalcaddesi_1"
             },
             {
-                "url": "assets/kaykaylikiz.png",
+                "url": "assets/kaykayli_kiz.png",
                 "frameConfig": {
-                    "frameWidth": 344,
-                    "frameHeight": 255,
+                    "frameWidth": 625,
+                    "frameHeight": 327,
                     "startFrame": 0,
-                    "endFrame": 15,
+                    "endFrame": 63,
                     "spacing": 0,
                     "margin": 0
                 },
                 "type": "spritesheet",
-                "key": "kaykaylikiz"
+                "key": "kaykayli_kiz"
             }
         ]
     },
