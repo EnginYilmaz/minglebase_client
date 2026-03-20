@@ -39,11 +39,26 @@ export default class Level extends Phaser.Scene {
   carpisiyor = false; // Çarpışma animasyonu spam'ını önler
   hareketCekiyor = false; // hareket_cek animasyonu bitene kadar kaykay_sur'u bloklar
 
+  // Crush sistemi
+  crushButton = null;
+  crushTargetId = null; // Şu an crush butonu gösterilen oyuncunun sessionId'si
+  crushSentTo = {};     // Zaten crush gönderdiğimiz oyuncular (spam engeli)
+
   init(data) {
     this.room = (data && data.room) ? data.room : null;
     this.myData = (data && data.me) ? data.me : null;
   }
   create() {
+        // Eksik animasyon: player-idle (kaykay_sur ile aynı frameler)
+        this.anims.create({
+          key: "player-idle",
+          frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+            start: 0,
+            end: 15,
+          }),
+          frameRate: 10,
+          repeat: -1,
+        });
     this.editorCreate();
 
     // Kaykaylı kız animasyonunu oluştur
@@ -209,8 +224,43 @@ export default class Level extends Phaser.Scene {
           if (data.anim && other.anims) other.play(data.anim, true);
         }
       });
+
+      // ── Crush sistemi mesajları ──
+      this.room.onMessage("crushReceived", (data) => {
+        this.showCrushNotification(data.fromName || "Biri");
+      });
+
+      this.room.onMessage("crushSent", (data) => {
+        this.showInfoNotification("Crush gönderildi! 💘");
+      });
     }
     // ─────────────────────────────────────────────────────────────────
+
+    // ── Crush butonu oluştur (başlangıçta gizli) ────────────────────
+    this.crushButton = this.add.text(0, 0, "💘 Crush", {
+      fontFamily: "Arial",
+      fontSize: "20px",
+      color: "#ffffff",
+      backgroundColor: "#e91e63",
+      padding: { x: 14, y: 10 },
+      align: "center",
+    })
+    .setOrigin(0.5, 0.5)
+    .setScrollFactor(0)
+    .setDepth(9999)
+    .setVisible(false)
+    .setInteractive({ useHandCursor: true });
+
+    this.crushButton.on("pointerdown", () => {
+      if (this.crushTargetId && this.room) {
+        this.room.send("crush", { targetSessionId: this.crushTargetId });
+        if (!this.crushSentTo) this.crushSentTo = {};
+        this.crushSentTo[this.crushTargetId] = true;
+        this.crushButton.setVisible(false);
+        this.crushTargetId = null;
+      }
+    });
+    // ────────────────────────────────────────────────────────────────
   }
 
   // Rakip kaykaylı sprite'ını oluştur (mavi tint ile ayırt edilir)
@@ -329,6 +379,35 @@ export default class Level extends Phaser.Scene {
       }
     }
 
+    // ── Crush butonu: 200px yakınlıktaki oyuncuya göster ────────────
+    if (!this.crushSentTo) this.crushSentTo = {};
+    const crushRadius = 200;
+    let closestCrushId = null;
+    let closestCrushDist = Infinity;
+    for (const id in this.otherPlayers) {
+      if (this.crushSentTo[id]) continue;
+      const other = this.otherPlayers[id];
+      const dx = Math.abs(this.karakterim.x - other.x);
+      const dy = Math.abs(this.karakterim.y - other.y);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < crushRadius && dy < 100 && dist < closestCrushDist) {
+        closestCrushDist = dist;
+        closestCrushId = id;
+      }
+    }
+    if (closestCrushId) {
+      this.crushTargetId = closestCrushId;
+      const cam = this.cameras.main;
+      const z = cam.zoom;
+      const btnX = cam.width / 2;
+      const btnY = cam.height / 2 + (cam.height / 2 - 60) / z;
+      this.crushButton.setPosition(btnX, btnY);
+      this.crushButton.setVisible(true);
+    } else {
+      this.crushButton.setVisible(false);
+      this.crushTargetId = null;
+    }
+
     // ── Manuel çarpışma: Diğer oyuncularla yan yana gelince it ──────
     // Sprite 344px geniş, 0.4 scale ile ~138px. Ama karakterin kendisi görselin ortasında daha dar.
     // 60px → iki karakter fiilen temas ettiğinde tetiklenir.
@@ -362,6 +441,58 @@ export default class Level extends Phaser.Scene {
       }
     }
     // ────────────────────────────────────────────────────────────────
+  }
+
+  // Crush bildirimi göster (biri sana crush attığında)
+  showCrushNotification(fromName) {
+    const cam = this.cameras.main;
+    const z = cam.zoom;
+    const notif = this.add.text(cam.width / 2, cam.height / 2 + (-cam.height / 2 + 60) / z, `💘 ${fromName} sana crush attı!`, {
+      fontFamily: "Arial",
+      fontSize: "22px",
+      color: "#ffffff",
+      backgroundColor: "#e91e63",
+      padding: { x: 16, y: 10 },
+      align: "center",
+    })
+    .setOrigin(0.5, 0.5)
+    .setScrollFactor(0)
+    .setDepth(1001);
+
+    this.tweens.add({
+      targets: notif,
+      alpha: 0,
+      y: notif.y - 15 / z,
+      duration: 3000,
+      ease: "Power2",
+      onComplete: () => notif.destroy(),
+    });
+  }
+
+  // Bilgi bildirimi göster
+  showInfoNotification(message) {
+    const cam = this.cameras.main;
+    const z = cam.zoom;
+    const notif = this.add.text(cam.width / 2, cam.height / 2 + (-cam.height / 2 + 100) / z, message, {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#ffffff",
+      backgroundColor: "#4caf50",
+      padding: { x: 12, y: 8 },
+      align: "center",
+    })
+    .setOrigin(0.5, 0.5)
+    .setScrollFactor(0)
+    .setDepth(1001);
+
+    this.tweens.add({
+      targets: notif,
+      alpha: 0,
+      y: notif.y - 15 / z,
+      duration: 2500,
+      ease: "Power2",
+      onComplete: () => notif.destroy(),
+    });
   }
 
   /* END-USER-CODE */
