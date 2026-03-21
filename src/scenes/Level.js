@@ -1,3 +1,6 @@
+import { getDb, checkMatchAndCrush, listenToMessages, sendSimsMessage } from "../firebase-chat.js";
+import { getMutualMatches } from "../firebase-matches.js";
+import { collection, query, where, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 // You can write more code here
 
 /* START OF COMPILED CODE */
@@ -60,6 +63,70 @@ export default class Level extends Phaser.Scene {
           repeat: -1,
         });
     this.editorCreate();
+
+    this.setupChatUI();
+    
+    import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then((authModule) => {
+      const { getAuth, onAuthStateChanged } = authModule;
+      onAuthStateChanged(getAuth(), async (user) => {
+        if (user) {
+          this.myData = user;
+          
+          if (!this.matchedUids) this.matchedUids = {};
+          this.matchedUids = await getMutualMatches(user.uid);
+          
+          // Initialize global matches listener so both parties know when they are matched.
+          if (!window.matchesListenerInitialized && this.myData && this.myData.uid) {
+               window.matchesListenerInitialized = true;
+               window.startupTime = Date.now();
+               const db = getDb();
+               const crushesRef = collection(db, "crushes");
+               const targetIdQuery = query(crushesRef, where("toId", "==", this.myData.uid));
+               onSnapshot(targetIdQuery, (snapshot) => {
+                   snapshot.docChanges().forEach((change) => {
+                       if (change.type === "added") {
+                           const docData = change.doc.data();
+                           const senderUid = docData.fromId;
+                           
+                           // Check if I also crushed them (is mutual)
+                           const myCrushesQuery = query(
+                               crushesRef,
+                               where("fromId", "==", this.myData.uid),
+                               where("toId", "==", senderUid)
+                           );
+                           getDocs(myCrushesQuery).then(mySnap => {
+                               if (!mySnap.empty) {
+                                   this.matchedUids[senderUid] = true;
+                                   
+                                   // Eğer eski bir veri geliyorsa otomatik pencere açma (2 saniye tolerans)
+                                   if (Date.now() - window.startupTime < 2000) return;
+                                   
+                                   console.log("Yeni Karşılıklı eşleşme algılandı!", senderUid);
+                                   
+                                   // Mevcut oyunculardan ismini bulalım
+                                   let senderName = "Rakip";
+                                   for (const sessionId in this.otherPlayers) {
+                                       if (this.otherPlayers[sessionId].uid === senderUid) {
+                                           senderName = this.otherPlayers[sessionId].name;
+                                           break;
+                                       }
+                                   }
+                                   
+                                   const chatContainer = document.getElementById("chat-ui-container");
+                                   if (chatContainer && chatContainer.style.display !== "flex") {
+                                       this.showInfoNotification("Biriyle eşleştin! Chat açılıyor... ✨");
+                                       this.openChatUI(senderUid, senderName);
+                                   }
+                               }
+                           });
+                       }
+                   });
+               });
+          }
+        }
+      });
+    });
+
 
     // Kaykaylı kız animasyonunu oluştur
     this.anims.create({
@@ -195,7 +262,7 @@ export default class Level extends Phaser.Scene {
     // ── Çok oyunculu mesaj dinleyicileri ──────────────────────────────
     if (this.room) {
       // Sunucuya hazır olduğumuzu bildir → mevcut oyuncuları geri gönderir
-      this.room.send("ready");
+      // Move send ready below listeners
 
       // Mevcut oyuncuların listesi (ready cevabı)
       this.room.onMessage("currentPlayers", (data) => {
@@ -234,6 +301,8 @@ export default class Level extends Phaser.Scene {
         this.showInfoNotification("Crush gönderildi! 💘");
       });
     }
+
+      this.room.send("ready"); // Hazır olduğumuzu geç bildiriyoruz ki hata almayalım
     // ─────────────────────────────────────────────────────────────────
 
     // ── Crush butonu oluştur (başlangıçta gizli) ────────────────────
@@ -251,19 +320,137 @@ export default class Level extends Phaser.Scene {
     .setVisible(false)
     .setInteractive({ useHandCursor: true });
 
-    this.crushButton.on("pointerdown", () => {
+    this.crushButton.on("pointerdown", async () => {
       if (this.crushTargetId && this.room) {
-        this.room.send("crush", { targetSessionId: this.crushTargetId });
+        const targetSessionId = this.crushTargetId;
+        const targetSprite = this.otherPlayers && this.otherPlayers[targetSessionId];
+        if (!targetSprite) return;
+        const targetUid = targetSprite.uid;
+        if (!targetUid) return;
+        
+        // Zaten Eşleşilmiş miydik? Sohbeti DİREKT aç
+        if (this.matchedUids && this.matchedUids[targetUid]) {
+            this.openChatUI(targetUid, targetSprite.name || "Rakip");
+            return;
+        }
+
+        // Değilsek crush veritabanını kontrol et
+        const isMatched = await checkMatchAndCrush(this.myData.uid, targetUid);
+        
+        if (!this.crushSentTo || !this.crushSentTo[targetSessionId]) {
+            this.room.send("crush", { targetSessionId: targetSessionId });
+        }
+        
         if (!this.crushSentTo) this.crushSentTo = {};
-        this.crushSentTo[this.crushTargetId] = true;
-        this.crushButton.setVisible(false);
-        this.crushTargetId = null;
+        this.crushSentTo[targetSessionId] = true;
+        
+        if (isMatched) {
+            if (!this.matchedUids) this.matchedUids = {};
+            this.matchedUids[targetUid] = true;
+            this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
+            this.openChatUI(targetUid, targetSprite.name || "Rakip");
+        } else {
+            this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... 💘");
+            this.crushButton.setVisible(false);
+            this.crushTargetId = null;
+        }
       }
     });
     // ────────────────────────────────────────────────────────────────
   }
 
   // Rakip kaykaylı sprite'ını oluştur (mavi tint ile ayırt edilir)
+  
+  showInfoNotification(message) {
+    const container = document.getElementById("info-notification-container");
+    const textEl = document.getElementById("info-notification-text");
+    if (!container || !textEl) return;
+
+    textEl.innerText = message;
+    container.style.display = "block";
+
+    setTimeout(() => {
+        container.style.display = "none";
+    }, 3000);
+  }
+
+  setupChatUI() {
+    const chatContainer = document.getElementById("chat-ui-container");
+    const closeBtn = document.getElementById("close-chat-btn");
+    const sendBtn = document.getElementById("chat-send-btn");
+    const inputField = document.getElementById("chat-input");
+
+    if (!chatContainer) return;
+
+    closeBtn.onclick = () => {
+      chatContainer.style.display = "none";
+      window.activeChatTargetUid = null;
+    };
+
+    const handleSend = () => {
+      const text = inputField.value.trim();
+      if (text && window.activeChatTargetUid && this.myData && this.myData.uid) {
+        sendSimsMessage(this.myData.uid, window.activeChatTargetUid, text);
+        inputField.value = "";
+      }
+    };
+
+    sendBtn.onclick = handleSend;
+    inputField.onkeypress = (e) => {
+      if (e.key === "Enter") handleSend();
+    };
+
+    inputField.addEventListener('focus', () => {
+        this.input.keyboard.enabled = false;
+    });
+    inputField.addEventListener('blur', () => {
+        this.input.keyboard.enabled = true;
+    });
+  }
+
+  openChatUI(targetUid, targetName) {
+    const chatContainer = document.getElementById("chat-ui-container");
+    const chatMessages = document.getElementById("chat-messages");
+    if (chatContainer) {
+       chatContainer.style.display = "flex";
+       window.activeChatTargetUid = targetUid;
+       chatContainer.querySelector("h3").innerText = targetName + " ile Sohbet";
+       
+       listenToMessages(this.myData.uid, targetUid, (messages) => {
+           chatMessages.innerHTML = "";
+           messages.forEach(msg => {
+               const msgEl = document.createElement("div");
+               msgEl.style.marginBottom = "8px";
+               msgEl.style.padding = "5px";
+               msgEl.style.borderRadius = "4px";
+               
+               if (msg.senderId === this.myData.uid) {
+                   msgEl.style.backgroundColor = "#e1ffc7";
+                   msgEl.style.color = "#000000";
+                   msgEl.style.wordBreak = "break-word";
+                   msgEl.style.textAlign = "right";
+                   msgEl.style.marginLeft = "auto";
+                   msgEl.style.maxWidth = "80%";
+                   msgEl.innerText = msg.text;
+               } else {
+                   msgEl.style.backgroundColor = "#fff";
+                   msgEl.style.color = "#000000";
+                   msgEl.style.wordBreak = "break-word";
+                   msgEl.style.textAlign = "left";
+                   msgEl.style.marginRight = "auto";
+                   msgEl.style.maxWidth = "80%";
+                   msgEl.innerText = msg.text;
+               }
+               chatMessages.appendChild(msgEl);
+           });
+           setTimeout(() => {
+               chatMessages.scrollTop = chatMessages.scrollHeight;
+           }, 50);
+       });
+    }
+  }
+
+
   createOtherPlayer(playerData) {
     // Sade sprite kullanıyoruz — fizik yok.
     // Sunucu pozisyonu her 50ms'de setPosition ile geldiği için fizik motoru
@@ -273,7 +460,9 @@ export default class Level extends Phaser.Scene {
     sprite.setOrigin(0.5, 0.5);
     sprite.setTint(0x4499ff); // Mavi → rakip oyuncu
     if (playerData.anim) sprite.play(playerData.anim, true);
-    this.otherPlayers[playerData.sessionId] = sprite;
+            sprite.uid = playerData.uid;
+      sprite.name = playerData.name;
+this.otherPlayers[playerData.sessionId] = sprite;
   }
   dur() {
     this.karakterim.stop();
@@ -385,7 +574,8 @@ export default class Level extends Phaser.Scene {
     let closestCrushId = null;
     let closestCrushDist = Infinity;
     for (const id in this.otherPlayers) {
-      if (this.crushSentTo[id]) continue;
+        // 
+      // if (this.crushSentTo[id]) continue;
       const other = this.otherPlayers[id];
       const dx = Math.abs(this.karakterim.x - other.x);
       const dy = Math.abs(this.karakterim.y - other.y);
@@ -396,14 +586,27 @@ export default class Level extends Phaser.Scene {
       }
     }
     if (closestCrushId) {
-      this.crushTargetId = closestCrushId;
-      const cam = this.cameras.main;
-      const z = cam.zoom;
-      const btnX = cam.width / 2;
-      const btnY = cam.height / 2 + (cam.height / 2 - 60) / z;
-      this.crushButton.setPosition(btnX, btnY);
-      this.crushButton.setVisible(true);
-    } else {
+        this.crushTargetId = closestCrushId;
+
+        const targetSprite = this.otherPlayers[this.crushTargetId];
+        const targetUid = targetSprite ? targetSprite.uid : null;
+        
+        // Zaten eşleşilmiş birisi ise:
+        if (this.matchedUids && targetUid && this.matchedUids[targetUid]) {
+            this.crushButton.setText("💬 Sohbet");
+            this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
+        } else {
+            this.crushButton.setText("💘 Crush");
+            this.crushButton.setStyle({ backgroundColor: "#e91e63" });
+        }
+        
+        const cam = this.cameras.main;
+        const z = cam.zoom;
+        const btnX = cam.width / 2;
+        const btnY = cam.height / 2 + (cam.height / 2 - 60) / z;
+        this.crushButton.setPosition(btnX, btnY);
+        this.crushButton.setVisible(true);
+      } else {
       this.crushButton.setVisible(false);
       this.crushTargetId = null;
     }

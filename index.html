@@ -21,6 +21,20 @@
 </head>
 
 <body>
+
+	<!-- CHAT UI CONTAINER (Gizli Başlar) -->
+	<div id="chat-ui-container" style="display: none; position: absolute; bottom: 20px; right: 20px; width: 300px; height: 400px; background: rgba(0,0,0,0.8); border: 2px solid #555; border-radius: 10px; z-index: 1000; flex-direction: column; padding: 10px; font-family: sans-serif; color: white;">
+		<div style="display: flex; justify-content: space-between; border-bottom: 1px solid #777; padding-bottom: 5px; margin-bottom: 5px;">
+			<h3 style="margin: 0; font-size: 16px;">Chat</h3>
+			<button id="close-chat-btn" style="background: red; color: white; border: none; cursor: pointer;">X</button>
+		</div>
+		<div id="chat-messages" style="flex-grow: 1; overflow-y: auto; margin-bottom: 10px; font-size: 14px; display: flex; flex-direction: column; gap: 5px;"></div>
+		<div style="display: flex; gap: 5px;">
+			<input type="text" id="chat-input" style="flex-grow: 1; padding: 5px;" placeholder="Mesaj yaz..." />
+			<button id="chat-send-btn" style="padding: 5px 10px; cursor: pointer;">Gönder</button>
+		</div>
+	</div>
+
 </body>
 
 </html>
