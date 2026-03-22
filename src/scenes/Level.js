@@ -200,13 +200,51 @@ export default class Level extends Phaser.Scene {
       repeat: 0,
     });
 
-    // Arkaplanı ekle (Orijinal boyutunda kalsın, kamerayı zoom ile ayarlayacağız)
-    this.bg = this.add.image(0, 0, "istiklalcaddesi_1").setOrigin(0, 0);
-    this.children.sendToBack(this.bg); // En altta kalsın
+    // Elele kayma animasyonu
+    this.anims.create({
+      key: "kaykaylilar_elele",
+      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+        start: 0, // NOT: Elele animasyonunun sprite içindeki başlangıç-bitiş frame'lerini buraya girebilirsin
+        end: 15,  // Şimdilik varsayılan 0-15 kullanılıyor, kendi grafik ayarlarına göre değiştirmeyi unutma
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // Çiçekçi kız animasyonları
+    this.anims.create({
+      key: "cicekci_yuru",
+      frames: this.anims.generateFrameNumbers("cicekci_kiz", {
+        start: 0,
+        end: 15,
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    // uskudarseasight
+    // Görsel boyutumuz (768px). Kameramızın görebileceği dikey alan (1080/2.2 = ~491px).
+    // Arkaplanı olabildiğince uzaklaştırmak ama ekranı da tam kaplaması için scale oranını minimuma (0.65) çekiyoruz.
+    // 768 * 0.65 = 499px (ekranı tam kapatacak minimum yüksekliğe düşürür)
+    const uskudarScale = 0.65;
+    const uskudarViewHeight = 500;
+    const uskudar = this.add.tileSprite(1567, uskudarViewHeight / 2, 3136, uskudarViewHeight, "uskudarseasight");
+    uskudar.tileScaleX = uskudarScale;
+    uskudar.tileScaleY = uskudarScale;
+    uskudar.setInteractive(new Phaser.Geom.Rectangle(0, 0, 3136, uskudarViewHeight), Phaser.Geom.Rectangle.Contains);
+
+    // kaldirimtasi_1
+    const kaldirimtasi_1 = this.add.tileSprite(1569, 614, 3136, 55, "kaldirimtasi_1");
+    // Tile texture scale if needed to look smaller (equivalent to scaleX=0.01 applied to texture)
+    kaldirimtasi_1.tileScaleX = 1;
+    kaldirimtasi_1.tileScaleY = 1;
+
+    this.children.sendToBack(kaldirimtasi_1);
+    this.children.sendToBack(uskudar);
 
     // Görselin genişliğini alıp kamera sınırlarını ona göre ayarlıyoruz
-    const bgWidth = this.bg.width;
-    const bgHeight = this.bg.height;
+    const bgWidth = 3136;
+    const bgHeight = 840;
 
     // Spawn pozisyonu: sunucudan geldiyse onu kullan, yoksa ortaya koy
     const spawnX = (this.myData && this.myData.x) ? this.myData.x : bgWidth / 2;
@@ -223,8 +261,8 @@ export default class Level extends Phaser.Scene {
 
     // Animasyonu oynatmaya başlatıyoruz
 
-    // Yeni görsel oldukça büyük, ekrana sığması için 0.4 oranına küçülttüm (istenirse değişebilir)
-    this.karakterim.setScale(0.4);
+    // Yeni görsel oldukça büyük, ekrana sığması için 0.6 oranına ayarlıyoruz (daha büyük)
+    this.karakterim.setScale(0.6);
     // setOrigin'i setScale'den SONRA çağırıyoruz ki displayOrigin doğru hesaplansın
     this.karakterim.setOrigin(0.5, 0.5);
 
@@ -243,18 +281,34 @@ export default class Level extends Phaser.Scene {
       this.karakterim.setDragX(300); // Sürtünme: 500 çok fazlaydı ve hızlanmayı yeniyordu, 300'e düşürdük
     }
 
+    // --- ÇİÇEKÇİ KIZ NPC ---
+    this.cicekci = this.physics.add.sprite(bgWidth / 2 + 150, 80, "cicekci_kiz", 0);
+    this.cicekci.setScale(0.3); // 0.6'nın yarısı
+    this.cicekci.setOrigin(0.5, 0.5);
+
+    if (this.cicekci.body) {
+      this.cicekci.body.setGravityY(600);
+      this.cicekci.setBounce(0);
+      this.cicekci.setCollideWorldBounds(true);
+      // Fiziği karakter boyutuna uygun hale getirelim ki diğerleriyle benzer yükseklikte dursun
+      this.cicekci.body.setSize(80, 280);
+      this.cicekci.body.setOffset(101, 70); 
+    }
+    // -----------------------
+
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
 
     // 1. GÖRÜNTÜ ALANINI DOLDUR: Oyun ekranı 1920x1080.
     // O yüzden 489 yüksekliğindeki arkaplanı ve kızı dev ekrana yaklaştırmak için
-    // zoom'u 2.2 değerine çıkartıyoruz (1.5 çok karınca gibi bırakır).
+    // zoom'u eski haline alıp karakteri büyük tutuyoruz.
     this.cameras.main.setZoom(2.2);
 
     // 2. KAMERA SINIRLARI: Kameranın arkaplan resminin dışındaki siyah (boş) alanlara çıkmasını engellemek için sınırları tekrar açıyoruz.
-    this.cameras.main.setBounds(0, 0, bgWidth, bgHeight);
+    // Kameranın düşüşlerde aşağı kaymasını önlemek için dikey sınırı manzara yüksekliğiyle (500) eşitliyoruz.
+    this.cameras.main.setBounds(0, 0, bgWidth, 500);
 
-    this.physics.world.setBounds(0, 0, bgWidth, 395);
+    this.physics.world.setBounds(0, 0, bgWidth, 420);
 
     // 3. KAMERA KIZI TAKİP ETSİN: Tam merkezde.
     this.cameras.main.startFollow(this.karakterim, true, 0.1, 0.1);
@@ -298,7 +352,7 @@ export default class Level extends Phaser.Scene {
       });
 
       this.room.onMessage("crushSent", (data) => {
-        this.showInfoNotification("Crush gönderildi! 💘");
+        this.showInfoNotification("Crush gönderildi! <3");
       });
     }
 
@@ -306,7 +360,7 @@ export default class Level extends Phaser.Scene {
     // ─────────────────────────────────────────────────────────────────
 
     // ── Crush butonu oluştur (başlangıçta gizli) ────────────────────
-    this.crushButton = this.add.text(0, 0, "💘 Crush", {
+    this.crushButton = this.add.text(0, 0, "Crush <3", {
       fontFamily: "Arial",
       fontSize: "20px",
       color: "#ffffff",
@@ -350,13 +404,74 @@ export default class Level extends Phaser.Scene {
             this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
             this.openChatUI(targetUid, targetSprite.name || "Rakip");
         } else {
-            this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... 💘");
+            this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
             this.crushButton.setVisible(false);
             this.crushTargetId = null;
         }
       }
     });
     // ────────────────────────────────────────────────────────────────
+    
+    // Mobil/iOS Dokunmatik Butonları Oluştur
+    this.createMobileControls();
+  }
+
+  createMobileControls() {
+    this.isUpPressed = false;
+    this.isDownPressed = false;
+    this.isLeftPressed = false;
+    this.isRightPressed = false;
+
+    // Çoklu dokunmatiği aktif edelim (aynı anda hem sağa basıp hem zıplayabilmek için)
+    this.input.addPointer(2);
+
+    const cam = this.cameras.main;
+    const z = cam.zoom;
+    const cx = cam.width / 2;
+    const cy = cam.height / 2;
+
+    // Kameranın ekranda gördüğü alanın tam sınırları:
+    const screenLeft = cx - cx / z;
+    const screenRight = cx + cx / z;
+    const screenTop = cy - cy / z;
+    const screenBottom = cy + cy / z;
+
+    // Butonların kenardan boşlukları
+    const paddingX = 40 / z;
+    const paddingY = 40 / z;
+
+    const createBtn = (x, y, text, onPress, onRelease) => {
+      const btn = this.add.text(x, y, text, {
+        fontSize: '20px', // Zoom oranından dolayı bu aslen ~44px görünecek
+        backgroundColor: '#222222',
+        color: '#ffffff',
+        padding: { left: 16, right: 16, top: 12, bottom: 12 }
+      })
+      .setScrollFactor(0)
+      .setDepth(9999)
+      .setAlpha(0.6)
+      .setOrigin(0.5)
+      .setInteractive();
+      
+      btn.on('pointerdown', onPress);
+      btn.on('pointerup', onRelease);
+      btn.on('pointerout', onRelease);
+      return btn;
+    };
+
+    // Sol Alt (Sol ve Sağ tuşları)
+    this.btnLeft = createBtn(screenLeft + paddingX * 2, screenBottom - paddingY * 1.5, '⬅', () => this.isLeftPressed = true, () => this.isLeftPressed = false);
+    this.btnRight = createBtn(screenLeft + paddingX * 5, screenBottom - paddingY * 1.5, '➡', () => this.isRightPressed = true, () => this.isRightPressed = false);
+
+    // Sağ Alt (Aşağı, Yukarı ve Aksiyon A tuşu)
+    this.btnDown = createBtn(screenRight - paddingX * 5, screenBottom - paddingY * 1.5, '⬇', () => this.isDownPressed = true, () => this.isDownPressed = false);
+    this.btnUp = createBtn(screenRight - paddingX * 5, screenBottom - paddingY * 4.5, '⬆', () => this.isUpPressed = true, () => this.isUpPressed = false);
+    
+    // Hareket butonu çok sıkışık olmasın diye onu yukarıya ve sola çekiyoruz
+    this.btnA = createBtn(screenRight - paddingX * 1.5, screenBottom - paddingY * 8.5, 'Akrobat (A)', () => {
+        // A tuşuna basılma durumunu doğrudan tetikliyoruz
+        this.hareket_cek();
+    }, () => {});
   }
 
   // Rakip kaykaylı sprite'ını oluştur (mavi tint ile ayırt edilir)
@@ -456,7 +571,7 @@ export default class Level extends Phaser.Scene {
     // Sunucu pozisyonu her 50ms'de setPosition ile geldiği için fizik motoru
     // collision'ı zaten çözemiyor (teleport ediyor). Manuel yaklaşım daha sağlıklı.
     const sprite = this.add.sprite(playerData.x, playerData.y, "kaykayli_kiz", 0);
-    sprite.setScale(0.4);
+    sprite.setScale(0.6);
     sprite.setOrigin(0.5, 0.5);
     sprite.setTint(0x4499ff); // Mavi → rakip oyuncu
     if (playerData.anim) sprite.play(playerData.anim, true);
@@ -523,6 +638,46 @@ this.otherPlayers[playerData.sessionId] = sprite;
       return;
     }
 
+    // Çiçekçi kız botunun herkesin ekranında BİREBİR AYNI görünmesi için küresel saat (Date.now) tabanlı yapay zeka:
+    if (this.cicekci && this.cicekci.body) {
+      // 12 saniyelik bir döngüyü ifade eder (12000 ms)
+      const ms = Date.now() % 12000;
+      const globalTimeSec = ms / 1000;
+      const anchorX = 3136 / 2; // bgWidth / 2 merkez noktası
+      
+      let targetX = anchorX;
+
+      if (globalTimeSec < 4) {
+        // 0-4 saniye arası: Sağa yürü (+240px mesafe)
+        targetX = anchorX + globalTimeSec * 60;
+        this.cicekci.setVelocityX(60);
+        this.cicekci.flipX = false;
+        this.cicekci.play("cicekci_yuru", true);
+      } else if (globalTimeSec >= 4 && globalTimeSec < 6) {
+        // 4-6 saniye arası: Dur bekle
+        targetX = anchorX + 240;
+        this.cicekci.setVelocityX(0);
+        this.cicekci.stop();
+        this.cicekci.setFrame(0);
+      } else if (globalTimeSec >= 6 && globalTimeSec < 10) {
+        // 6-10 saniye arası: Sola yürü (-240px geri dönüş)
+        targetX = anchorX + 240 - ((globalTimeSec - 6) * 60);
+        this.cicekci.setVelocityX(-60);
+        this.cicekci.flipX = true;
+        this.cicekci.play("cicekci_yuru", true);
+      } else {
+        // 10-12 saniye arası: Dur bekle (başlangıç noktasında)
+        targetX = anchorX;
+        this.cicekci.setVelocityX(0);
+        this.cicekci.stop();
+        this.cicekci.setFrame(0);
+      }
+
+      // Oyuna sonradan girenler için pozisyonu mutlak zaman tabanlı kilitliyoruz.
+      // Fizik motoru sadece yerçekimi ve çarpışmalar için çalışacak, yatay konumu zamana göre biz belirteceğiz.
+      this.cicekci.setX(targetX);
+    }
+
     // Kendi konumumuzu sunucuya bildir (50ms'de bir)
     if (this.room) {
       const now = Date.now();
@@ -542,22 +697,20 @@ this.otherPlayers[playerData.sessionId] = sprite;
     if (Phaser.Input.Keyboard.JustDown(this.keyA)) {
       this.hareket_cek();
     }
-    if (this.cursors.up.isDown && this.karakterim.body.blocked.down) {
+    if ((this.cursors.up.isDown || this.isUpPressed) && this.karakterim.body.blocked.down) {
       this.zipla(); // Zıplama kuvveti
     }
 
-    if (this.cursors.down.isDown && this.karakterim.body.blocked.down) {
+    if ((this.cursors.down.isDown || this.isDownPressed) && this.karakterim.body.blocked.down) {
       this.cok();
     }
 
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.isLeftPressed) {
       this.yon = true;
       this.git(this.yon);
-      //this.karakterim.setAccelerationX(0); // Sadece anlık itki (setVelocity) uyguluyoruz
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.isRightPressed) {
       this.yon = false;
       this.git(this.yon);
-      //this.karakterim.setAccelerationX(0);
     } else {
       // Tuşlara basılmadığında motoru kapat, Phaser'ın setDragX sürtünmesi yavaşlatacak.
       this.karakterim.setAccelerationX(0);
@@ -593,10 +746,10 @@ this.otherPlayers[playerData.sessionId] = sprite;
         
         // Zaten eşleşilmiş birisi ise:
         if (this.matchedUids && targetUid && this.matchedUids[targetUid]) {
-            this.crushButton.setText("💬 Sohbet");
+            this.crushButton.setText("Sohbet");
             this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
         } else {
-            this.crushButton.setText("💘 Crush");
+            this.crushButton.setText("Crush <3");
             this.crushButton.setStyle({ backgroundColor: "#e91e63" });
         }
         
@@ -619,27 +772,85 @@ this.otherPlayers[playerData.sessionId] = sprite;
       const other = this.otherPlayers[id];
       const dx = this.karakterim.x - other.x;
       const dy = this.karakterim.y - other.y;
+      const targetUid = other.uid;
+      const isMatched = this.matchedUids && targetUid && this.matchedUids[targetUid];
+
       // Sadece aynı yükseklikte yan yana geldiklerinde (üst üste zıplama hali hariç)
       if (Math.abs(dy) < 60 && Math.abs(dx) < hitRadius) {
-        const yon = dx >= 0 ? 1 : -1;
-        const overlap = hitRadius - Math.abs(dx);
-        this.karakterim.x += yon * overlap; // Anlık konum düzeltmesi
-        this.karakterim.body.setVelocityX(
-          this.karakterim.body.velocity.x + yon * 200
-        );
-        // Çarpışma animasyonu — aynı anda birden fazla tetiklenmesin
-        if (!this.carpisiyor) {
-          this.carpisiyor = true;
-          const hiz = Math.abs(this.karakterim.body.velocity.x);
-          if (hiz >= 150) {
-            // Yüksek hız → şiddetli düşme
-            this.karakterim.play("kaykaydan_dusme", true).chain("kaykay_stabilize");
-            this.time.delayedCall(1200, () => { this.carpisiyor = false; });
-          } else {
-            // Düşük hız → hafif sarsılma
-            this.karakterim.play("kaykay_cok", true).chain("kaykay_dogrul");
-            this.time.delayedCall(600, () => { this.carpisiyor = false; });
-          }
+        if (isMatched) {
+            // "kaykaylilar_elele" animasyonu aktif edilecek menzil
+            const holdRadius = 50; 
+            if (Math.abs(dx) < holdRadius) {
+               
+               const sameDirection = this.karakterim.flipX === other.flipX;
+               const mySpeed = Math.abs(this.karakterim.body.velocity.x);
+               const isBothStopped = mySpeed < 5 && other.anim !== "kaykay_sur"; 
+               
+               // Eğer aynı yöne sürüyorlarsa veya yan yana duruyorlarsa (zıt yöne hızla geçip gitmiyorlarsa)
+               if (sameDirection || isBothStopped) {
+                   
+                   // Sağ ellerin sağda olması prensibi:
+                   // Aynı yöne bakıyorken, karakterler arkalı önlü pozisyonda el sallıyor gibi
+                   // konumlandırmak için aralarında ~25px bir ofset bırakıyoruz (spritesheet yapısına göre 0 da olabilir)
+                   const offset = 25; 
+                   // dx < 0 ben soldayım demek. Soldaysam targetX'm, diğerinin solu (- offset), sağdaysam + offset
+                   // Eğer tam senkronize olacaklarsa (sırt sırta) offset'i 0 da yapabiliriz.
+                   const targetX = dx < 0 ? other.x - offset : other.x + offset;
+                   
+                   // Sert ışınlanma yerine yumuşak snapleme ("objects should snap each other")
+                   this.karakterim.x = Phaser.Math.Linear(this.karakterim.x, targetX, 0.15);
+                   
+                   // Animasyon devreye sokuluyor (eğer yere basıyorsa ve başka hareket çekmiyorsa)
+                   if (this.karakterim.body.blocked.down && !this.hareketCekiyor) {
+                       this.karakterim.play("kaykaylilar_elele", true);
+                   }
+
+                   // Kalp efekti / sevinç gösterisi
+                   if (!this.sevgiGosteriyor) {
+                     this.sevgiGosteriyor = true;
+                     const heartText = ['💖', '💕', '🥰', '😍', '👩‍❤️‍👨'][Math.floor(Math.random() * 5)];
+                     const heart = this.add.text(
+                       (this.karakterim.x + other.x) / 2, 
+                       this.karakterim.y - 40, 
+                       heartText, 
+                       { fontSize: "32px" }
+                     ).setOrigin(0.5, 0.5);
+
+                     this.tweens.add({
+                       targets: heart,
+                       y: heart.y - 60,
+                       alpha: 0,
+                       duration: 1500,
+                       ease: 'Power1',
+                       onComplete: () => heart.destroy()
+                     });
+
+                     this.time.delayedCall(1500, () => { this.sevgiGosteriyor = false; });
+                   }
+               }
+            }
+        } else {
+            // Normal Çarpışma
+            const yon = dx >= 0 ? 1 : -1;
+            const overlap = hitRadius - Math.abs(dx);
+            this.karakterim.x += yon * overlap; // Anlık konum düzeltmesi
+            this.karakterim.body.setVelocityX(
+              this.karakterim.body.velocity.x + yon * 200
+            );
+            // Çarpışma animasyonu — aynı anda birden fazla tetiklenmesin
+            if (!this.carpisiyor) {
+              this.carpisiyor = true;
+              const hiz = Math.abs(this.karakterim.body.velocity.x);
+              if (hiz >= 150) {
+                // Yüksek hız → şiddetli düşme
+                this.karakterim.play("kaykaydan_dusme", true).chain("kaykay_stabilize");
+                this.time.delayedCall(1200, () => { this.carpisiyor = false; });
+              } else {
+                // Düşük hız → hafif sarsılma
+                this.karakterim.play("kaykay_cok", true).chain("kaykay_dogrul");
+                this.time.delayedCall(600, () => { this.carpisiyor = false; });
+              }
+            }
         }
       }
     }
@@ -650,7 +861,7 @@ this.otherPlayers[playerData.sessionId] = sprite;
   showCrushNotification(fromName) {
     const cam = this.cameras.main;
     const z = cam.zoom;
-    const notif = this.add.text(cam.width / 2, cam.height / 2 + (-cam.height / 2 + 60) / z, `💘 ${fromName} sana crush attı!`, {
+    const notif = this.add.text(cam.width / 2, cam.height / 2 + (-cam.height / 2 + 60) / z, `<3 ${fromName} sana crush attı!`, {
       fontFamily: "Arial",
       fontSize: "22px",
       color: "#ffffff",

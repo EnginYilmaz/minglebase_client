@@ -2,9 +2,17 @@
     "section1": {
         "files": [
             {
-                "url": "assets/istiklalcaddesi.png",
-                "type": "image",
-                "key": "istiklalcaddesi_1"
+                "url": "assets/cicekci_kiz.png",
+                "frameConfig": {
+                    "frameWidth": 282,
+                    "frameHeight": 410,
+                    "startFrame": 0,
+                    "endFrame": 16,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "cicekci_kiz"
             },
             {
                 "url": "assets/kaykayli_kiz.png",
@@ -18,6 +26,11 @@
                 },
                 "type": "spritesheet",
                 "key": "kaykayli_kiz"
+            },
+            {
+                "url": "assets/uskudarseasight.png",
+                "type": "image",
+                "key": "uskudarseasight"
             }
         ]
     },

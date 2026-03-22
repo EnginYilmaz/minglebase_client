@@ -1,0 +1,34 @@
+{
+    "id": "3047e3fa-1a01-4d79-8b24-7f0748d1589e",
+    "sceneType": "SCENE",
+    "settings": {
+        "preloadPackFiles": [],
+        "createMethodName": "editorCreate",
+        "sceneKey": "uskudarsahilyolu",
+        "borderWidth": 3136,
+        "borderHeight": 640
+    },
+    "displayList": [
+        {
+            "type": "TileSprite",
+            "id": "2ab4d1e1-a715-4327-9a87-888d2fa67cb6",
+            "label": "uskudarseasight",
+            "texture": {
+                "key": "uskudarseasight"
+            },
+            "y": 1.4525070190429688,
+            "scaleY": 0.8457428782318994,
+            "originX": 0,
+            "originY": 0,
+            "width": 3136,
+            "height": 768
+        }
+    ],
+    "plainObjects": [],
+    "meta": {
+        "app": "Phaser Editor - Scene Editor",
+        "url": "https://phaser.io/editor",
+        "contentType": "phasereditor2d.core.scene.SceneContentType",
+        "version": 5
+    }
+}
