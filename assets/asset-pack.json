@@ -2,6 +2,16 @@
     "section1": {
         "files": [
             {
+                "url": "assets/asagi.png",
+                "type": "image",
+                "key": "asagi"
+            },
+            {
+                "url": "assets/akrobatik.png",
+                "type": "image",
+                "key": "akrobatik"
+            },
+            {
                 "url": "assets/cicekci_kiz.png",
                 "frameConfig": {
                     "frameWidth": 282,
@@ -28,9 +38,24 @@
                 "key": "kaykayli_kiz"
             },
             {
+                "url": "assets/saga.png",
+                "type": "image",
+                "key": "saga"
+            },
+            {
+                "url": "assets/sola.png",
+                "type": "image",
+                "key": "sola"
+            },
+            {
                 "url": "assets/uskudarseasight.png",
                 "type": "image",
                 "key": "uskudarseasight"
+            },
+            {
+                "url": "assets/yukari.png",
+                "type": "image",
+                "key": "yukari"
             }
         ]
     },

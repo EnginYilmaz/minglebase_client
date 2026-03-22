@@ -440,35 +440,43 @@ export default class Level extends Phaser.Scene {
     const paddingX = 40 / z;
     const paddingY = 40 / z;
 
-    const createBtn = (x, y, text, onPress, onRelease) => {
-      const btn = this.add.text(x, y, text, {
-        fontSize: '20px', // Zoom oranından dolayı bu aslen ~44px görünecek
-        backgroundColor: '#222222',
-        color: '#ffffff',
-        padding: { left: 16, right: 16, top: 12, bottom: 12 }
-      })
+    const createBtn = (x, y, key, onPress, onRelease) => {
+      const btn = this.add.image(x, y, key)
       .setScrollFactor(0)
       .setDepth(9999)
-      .setAlpha(0.6)
+      .setAlpha(0.7)
       .setOrigin(0.5)
+      .setDisplaySize(70, 70) // Ekranda mantikli bir boyuta kuculttuk
       .setInteractive();
       
-      btn.on('pointerdown', onPress);
-      btn.on('pointerup', onRelease);
-      btn.on('pointerout', onRelease);
+      btn.on('pointerdown', () => {
+          btn.setAlpha(1);
+          btn.setDisplaySize(60, 60); // basma efekti (kuculur ve tam gorunur)
+          onPress();
+      });
+
+      const restoreBtn = () => {
+          btn.setAlpha(0.7);
+          btn.setDisplaySize(70, 70); // normal boyuta doner
+          onRelease();
+      };
+
+      btn.on('pointerup', restoreBtn);
+      btn.on('pointerout', restoreBtn);
+      
       return btn;
     };
 
-    // Sol Alt (Sol ve Sağ tuşları)
-    this.btnLeft = createBtn(screenLeft + paddingX * 2, screenBottom - paddingY * 1.5, '⬅', () => this.isLeftPressed = true, () => this.isLeftPressed = false);
-    this.btnRight = createBtn(screenLeft + paddingX * 5, screenBottom - paddingY * 1.5, '➡', () => this.isRightPressed = true, () => this.isRightPressed = false);
+    // Sol Alt (Sol ve Sağ tuşları) - Aralarini biraz açtik (*5 yerine *6, *1.5 yerine *2)
+    this.btnLeft = createBtn(screenLeft + paddingX * 2, screenBottom - paddingY * 2, 'sola', () => this.isLeftPressed = true, () => this.isLeftPressed = false);
+    this.btnRight = createBtn(screenLeft + paddingX * 6, screenBottom - paddingY * 2, 'saga', () => this.isRightPressed = true, () => this.isRightPressed = false);
 
     // Sağ Alt (Aşağı, Yukarı ve Aksiyon A tuşu)
-    this.btnDown = createBtn(screenRight - paddingX * 5, screenBottom - paddingY * 1.5, '⬇', () => this.isDownPressed = true, () => this.isDownPressed = false);
-    this.btnUp = createBtn(screenRight - paddingX * 5, screenBottom - paddingY * 4.5, '⬆', () => this.isUpPressed = true, () => this.isUpPressed = false);
+    this.btnDown = createBtn(screenRight - paddingX * 5, screenBottom - paddingY * 2, 'asagi', () => this.isDownPressed = true, () => this.isDownPressed = false);
+    this.btnUp = createBtn(screenRight - paddingX * 5, screenBottom - paddingY * 6, 'yukari', () => this.isUpPressed = true, () => this.isUpPressed = false);
     
     // Hareket butonu çok sıkışık olmasın diye onu yukarıya ve sola çekiyoruz
-    this.btnA = createBtn(screenRight - paddingX * 1.5, screenBottom - paddingY * 8.5, 'Akrobat (A)', () => {
+    this.btnA = createBtn(screenRight - paddingX * 1.5, screenBottom - paddingY * 8.5, 'akrobatik', () => {
         // A tuşuna basılma durumunu doğrudan tetikliyoruz
         this.hareket_cek();
     }, () => {});
