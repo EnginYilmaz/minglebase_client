@@ -41,6 +41,7 @@ export default class Level extends Phaser.Scene {
   lastSent = 0;
   carpisiyor = false; // Çarpışma animasyonu spam'ını önler
   hareketCekiyor = false; // hareket_cek animasyonu bitene kadar kaykay_sur'u bloklar
+  derinNefesAliyor = false; // derin nefes animasyonu sırasında diğer aksiyonları bloklar
 
   // Crush sistemi
   crushButton = null;
@@ -55,7 +56,7 @@ export default class Level extends Phaser.Scene {
         // Eksik animasyon: player-idle (kaykay_sur ile aynı frameler)
         this.anims.create({
           key: "player-idle",
-          frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+          frames: this.anims.generateFrameNumbers("kaykay_sur", {
             start: 0,
             end: 15,
           }),
@@ -131,7 +132,7 @@ export default class Level extends Phaser.Scene {
     // Kaykaylı kız animasyonunu oluştur
     this.anims.create({
       key: "kaykay_sur",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+      frames: this.anims.generateFrameNumbers("kaykay_sur", {
         start: 0,
         end: 15,
       }),
@@ -142,20 +143,31 @@ export default class Level extends Phaser.Scene {
     // Eğilme (çömelme) animasyonunu oluştur
     this.anims.create({
       key: "kaykay_cok",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
-        start: 25,
-        end:28,
+      frames: this.anims.generateFrameNumbers("kaykay_cok", {
+        start: 0,
+        end: 15,
       }),
       frameRate: 7,
       repeat: 0,
     });
 
-        // Eğilme (çömelme) animasyonunu oluştur
+    // Derin nefes animasyonu (B tuşu / Breathe butonu)
+    this.anims.create({
+      key: "kaykay_derinnefes",
+      frames: this.anims.generateFrameNumbers("kaykay_derinnefes", {
+        start: 0,
+        end: 15,
+      }),
+      frameRate: 6,
+      repeat: 0,
+    });
+
+        // Doğrulma animasyonu (çökten kalkarken)
     this.anims.create({
       key: "kaykay_dogrul",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
-        start: 28,
-        end: 31,
+      frames: this.anims.generateFrameNumbers("kaykay_cok", {
+        start: 8,
+        end: 15,
       }),
       frameRate: 10,
       repeat: 0,
@@ -163,18 +175,18 @@ export default class Level extends Phaser.Scene {
 
     this.anims.create({
       key: "kaykay_ziplama",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
-        start: 32,
-        end: 47,
+      frames: this.anims.generateFrameNumbers("kaykay_zipla", {
+        start: 0,
+        end: 15,
       }),
       frameRate: 10,
       repeat: 0,
     });
     this.anims.create({
       key: "kaykaydan_dusme",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
-        start: 48,
-        end: 63,
+      frames: this.anims.generateFrameNumbers("kaykay_dus", {
+        start: 0,
+        end: 15,
       }),
       frameRate: 6,
       repeat: 0,
@@ -182,9 +194,9 @@ export default class Level extends Phaser.Scene {
 
     this.anims.create({
       key: "kaykay_hareket_cekme",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
-        start: 16,
-        end: 31,
+      frames: this.anims.generateFrameNumbers("kaykay_hareket_cek", {
+        start: 0,
+        end: 15,
       }),
       frameRate: 10,
       repeat: 0,
@@ -192,7 +204,7 @@ export default class Level extends Phaser.Scene {
 
     this.anims.create({
       key: "kaykay_stabilize",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
+      frames: this.anims.generateFrameNumbers("kaykay_sur", {
         start: 0,
         end: 15,
       }),
@@ -203,9 +215,9 @@ export default class Level extends Phaser.Scene {
     // Elele kayma animasyonu
     this.anims.create({
       key: "kaykaylilar_elele",
-      frames: this.anims.generateFrameNumbers("kaykayli_kiz", {
-        start: 0, // NOT: Elele animasyonunun sprite içindeki başlangıç-bitiş frame'lerini buraya girebilirsin
-        end: 15,  // Şimdilik varsayılan 0-15 kullanılıyor, kendi grafik ayarlarına göre değiştirmeyi unutma
+      frames: this.anims.generateFrameNumbers("kaykay_eliniuzat", {
+        start: 0,
+        end: 15,
       }),
       frameRate: 10,
       repeat: -1,
@@ -251,7 +263,7 @@ export default class Level extends Phaser.Scene {
     this.karakterim = this.physics.add.sprite(
       spawnX,
       80,
-      "kaykayli_kiz",
+      "kaykay_sur",
       0,
     );
 
@@ -261,8 +273,24 @@ export default class Level extends Phaser.Scene {
 
     // Animasyonu oynatmaya başlatıyoruz
 
-    // Yeni görsel oldukça büyük, ekrana sığması için 0.6 oranına ayarlıyoruz (daha büyük)
-    this.karakterim.setScale(0.6);
+    // Her animasyonun frame boyutu farklı, karakter tutarlı görünsün diye animasyona göre scale ayarla
+    this.animScales = {
+      'kaykay_sur': 0.35,
+      'player-idle': 0.35,
+      'kaykay_stabilize': 0.35,
+      'kaykay_hareket_cekme': 0.45,
+      'kaykay_cok': 0.35,
+      'kaykay_derinnefes': 0.45,
+      'kaykay_dogrul': 0.35,
+      'kaykay_ziplama': 0.35,
+      'kaykaydan_dusme': 0.45,
+      'kaykaylilar_elele': 0.35,
+    };
+    this.karakterim.setScale(this.animScales['kaykay_sur']);
+    this.karakterim.on('animationstart', (anim) => {
+      const scale = this.animScales[anim.key] || 0.5;
+      this.karakterim.setScale(scale);
+    });
     // setOrigin'i setScale'den SONRA çağırıyoruz ki displayOrigin doğru hesaplansın
     this.karakterim.setOrigin(0.5, 0.5);
 
@@ -298,6 +326,7 @@ export default class Level extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+    this.keyB = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
 
     // 1. GÖRÜNTÜ ALANINI DOLDUR: Oyun ekranı 1920x1080.
     // O yüzden 489 yüksekliğindeki arkaplanı ve kızı dev ekrana yaklaştırmak için
@@ -578,10 +607,14 @@ export default class Level extends Phaser.Scene {
     // Sade sprite kullanıyoruz — fizik yok.
     // Sunucu pozisyonu her 50ms'de setPosition ile geldiği için fizik motoru
     // collision'ı zaten çözemiyor (teleport ediyor). Manuel yaklaşım daha sağlıklı.
-    const sprite = this.add.sprite(playerData.x, playerData.y, "kaykayli_kiz", 0);
-    sprite.setScale(0.6);
+    const sprite = this.add.sprite(playerData.x, playerData.y, "kaykay_sur", 0);
+    sprite.setScale(this.animScales['kaykay_sur'] || 0.45);
     sprite.setOrigin(0.5, 0.5);
     sprite.setTint(0x4499ff); // Mavi → rakip oyuncu
+    sprite.on('animationstart', (anim) => {
+      const scale = this.animScales[anim.key] || 0.5;
+      sprite.setScale(scale);
+    });
     if (playerData.anim) sprite.play(playerData.anim, true);
             sprite.uid = playerData.uid;
       sprite.name = playerData.name;
@@ -591,6 +624,27 @@ this.otherPlayers[playerData.sessionId] = sprite;
     this.karakterim.stop();
     this.karakterim.setAccelerationX(0); // Motor gücünü kes
     this.duruyor = true;
+  }
+  derinNefesAl() {
+    if (this.derinNefesAliyor) return;
+    this.derinNefesAliyor = true;
+
+    // Karakteri durdur
+    this.karakterim.setVelocityX(0);
+    this.karakterim.setAccelerationX(0);
+
+    // Animasyon sırasında yukarı zıplamasını önlemek için Y pozisyonunu ayarla
+    this.karakterim.y += 30;
+
+    // Derin nefes animasyonunu oynat
+    this.karakterim.play("kaykay_derinnefes", true);
+
+    // Animasyon bitince idle'a dön ve Y pozisyonunu düzelt
+    this.karakterim.once("animationcomplete-kaykay_derinnefes", () => {
+      this.karakterim.y -= 30;
+      this.karakterim.play("kaykay_sur", true);
+      this.derinNefesAliyor = false;
+    });
   }
   hareket_cek() {
     if (this.duruyor) return; // Duruyorsa hareket çekemez
@@ -705,15 +759,20 @@ this.otherPlayers[playerData.sessionId] = sprite;
     if (Phaser.Input.Keyboard.JustDown(this.keyA)) {
       this.hareket_cek();
     }
+    if (Phaser.Input.Keyboard.JustDown(this.keyB)) {
+      this.derinNefesAl();
+    }
+
+    // Derin nefes sırasında hareket/zıplama/çömelme engelle
+    if (!this.derinNefesAliyor) {
+
     if ((this.cursors.up.isDown || this.isUpPressed) && this.karakterim.body.blocked.down) {
       this.zipla(); // Zıplama kuvveti
     }
 
     if ((this.cursors.down.isDown || this.isDownPressed) && this.karakterim.body.blocked.down) {
       this.cok();
-    }
-
-    if (this.cursors.left.isDown || this.isLeftPressed) {
+    } else if (this.cursors.left.isDown || this.isLeftPressed) {
       this.yon = true;
       this.git(this.yon);
     } else if (this.cursors.right.isDown || this.isRightPressed) {
@@ -728,6 +787,8 @@ this.otherPlayers[playerData.sessionId] = sprite;
         this.dur();
       }
     }
+
+    } // derinNefesAliyor guard sonu
 
     // ── Crush butonu: 200px yakınlıktaki oyuncuya göster ────────────
     if (!this.crushSentTo) this.crushSentTo = {};

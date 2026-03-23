@@ -25,6 +25,110 @@
                 "key": "cicekci_kiz"
             },
             {
+                "url": "assets/kaykay/kaykay_derinnefes.png",
+                "frameConfig": {
+                    "frameWidth": 286,
+                    "frameHeight": 358,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_derinnefes"
+            },
+            {
+                "url": "assets/kaykay/kaykay_dus.png",
+                "frameConfig": {
+                    "frameWidth": 864,
+                    "frameHeight": 328,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_dus"
+            },
+            {
+                "url": "assets/kaykay/kaykay_eliniuzat.png",
+                "frameConfig": {
+                    "frameWidth": 864,
+                    "frameHeight": 416,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_eliniuzat"
+            },
+            {
+                "url": "assets/kaykay/kaykay_hareket_cek.png",
+                "frameConfig": {
+                    "frameWidth": 324,
+                    "frameHeight": 396,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_hareket_cek"
+            },
+                        {
+                "url": "assets/kaykay/kaykay_cok.png",
+                "frameConfig": {
+                    "frameWidth": 272,
+                    "frameHeight": 370,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_cok"
+            },
+            {
+                "url": "assets/kaykay/kaykay_hi5.png",
+                "frameConfig": {
+                    "frameWidth": 286,
+                    "frameHeight": 358,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_hi5"
+            },
+            {
+                "url": "assets/kaykay/kaykay_sur.png",
+                "frameConfig": {
+                    "frameWidth": 322,
+                    "frameHeight": 404,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_sur"
+            },
+            {
+                "url": "assets/kaykay/kaykay_zipla.png",
+                "frameConfig": {
+                    "frameWidth": 240,
+                    "frameHeight": 432,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_zipla"
+            },
+            {
                 "url": "assets/kaykayli_kiz.png",
                 "frameConfig": {
                     "frameWidth": 625,
