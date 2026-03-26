@@ -2,14 +2,14 @@
     "section1": {
         "files": [
             {
-                "url": "assets/asagi.png",
-                "type": "image",
-                "key": "asagi"
-            },
-            {
                 "url": "assets/akrobatik.png",
                 "type": "image",
                 "key": "akrobatik"
+            },
+            {
+                "url": "assets/asagi.png",
+                "type": "image",
+                "key": "asagi"
             },
             {
                 "url": "assets/cicekci_kiz.png",
@@ -23,6 +23,26 @@
                 },
                 "type": "spritesheet",
                 "key": "cicekci_kiz"
+            },
+            {
+                "url": {
+                    "IMG": "assets/kaldirim_tasi.png"
+                },
+                "type": "texture",
+                "key": "kaldirim_tasi"
+            },
+            {
+                "url": "assets/kaykay/kaykay_cok.png",
+                "frameConfig": {
+                    "frameWidth": 272,
+                    "frameHeight": 370,
+                    "startFrame": 0,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "kaykay_cok"
             },
             {
                 "url": "assets/kaykay/kaykay_derinnefes.png",
@@ -75,19 +95,6 @@
                 },
                 "type": "spritesheet",
                 "key": "kaykay_hareket_cek"
-            },
-                        {
-                "url": "assets/kaykay/kaykay_cok.png",
-                "frameConfig": {
-                    "frameWidth": 272,
-                    "frameHeight": 370,
-                    "startFrame": 0,
-                    "endFrame": 15,
-                    "spacing": 0,
-                    "margin": 0
-                },
-                "type": "spritesheet",
-                "key": "kaykay_cok"
             },
             {
                 "url": "assets/kaykay/kaykay_hi5.png",

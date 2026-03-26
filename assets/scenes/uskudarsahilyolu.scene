@@ -5,26 +5,21 @@
         "preloadPackFiles": [],
         "createMethodName": "editorCreate",
         "sceneKey": "uskudarsahilyolu",
-        "borderWidth": 3136,
+        "borderWidth": 1875,
         "borderHeight": 640
     },
-    "displayList": [
+    "displayList": [],
+    "plainObjects": [
         {
-            "type": "TileSprite",
-            "id": "2ab4d1e1-a715-4327-9a87-888d2fa67cb6",
-            "label": "uskudarseasight",
-            "texture": {
-                "key": "uskudarseasight"
-            },
-            "y": 1.4525070190429688,
-            "scaleY": 0.8457428782318994,
-            "originX": 0,
-            "originY": 0,
-            "width": 3136,
-            "height": 768
+            "id": "f24416f9-a442-49e5-83c1-10856b62e7ff",
+            "type": "Collider",
+            "label": "collider",
+            "scope": "LOCAL",
+            "object1": "yerzemin",
+            "object2": "karakterim",
+            "overlapOnly": true
         }
     ],
-    "plainObjects": [],
     "meta": {
         "app": "Phaser Editor - Scene Editor",
         "url": "https://phaser.io/editor",

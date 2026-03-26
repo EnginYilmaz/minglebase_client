@@ -56,7 +56,7 @@ export default class Waiting extends Phaser.Scene {
         // transitioned flag prevents Waiting's stale handlers from restarting Level
         if (this.myData && this.startReceived && !this.transitioned) {
             this.transitioned = true;
-            this.scene.start("Level", { room: this.room, me: this.myData });
+            this.scene.start("UskudarSahilyolu", { room: this.room, me: this.myData });
         }
     }
 

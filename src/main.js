@@ -1,6 +1,6 @@
-import Level from "./scenes/Level.js";
 import Login from "./scenes/Login.js";
 import Waiting from "./scenes/Waiting.js";
+import UskudarSahilyolu from "./scenes/UskudarSahilyolu.js";
 
 window.addEventListener('load', function () {
 
@@ -26,7 +26,7 @@ window.addEventListener('load', function () {
 	game.scene.add("Preload", Preload);
 	game.scene.add("Login", Login);
 	game.scene.add("Waiting", Waiting);
-	game.scene.add("Level", Level);
+	game.scene.add("UskudarSahilyolu", UskudarSahilyolu);
 	game.scene.add("Boot", Boot, true);
 });
 

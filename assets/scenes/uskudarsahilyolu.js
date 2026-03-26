@@ -16,10 +16,8 @@ class uskudarsahilyolu extends Phaser.Scene {
 	/** @returns {void} */
 	editorCreate() {
 
-		// uskudarseasight
-		const uskudarseasight = this.add.tileSprite(0, 1.4525070190429688, 3136, 768, "uskudarseasight");
-		uskudarseasight.scaleY = 0.8457428782318994;
-		uskudarseasight.setOrigin(0, 0);
+		// collider
+		this.physics.add.overlap(yerzemin, karakterim);
 
 		this.events.emit("scene-awake");
 	}
