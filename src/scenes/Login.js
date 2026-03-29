@@ -66,12 +66,12 @@ export default class Login extends Phaser.Scene {
         // Durum metni (+280)
         this.statusText = this.add.text(width / 2, height / 2 + 280, "", { fontSize: "24px", color: "#ff6666" }).setOrigin(0.5);
     }
-
-    async handleGoogleLogin() {
+async handleGoogleLogin() {
         this.statusText.setText("Google ile giriş yapılıyor...");
         try {
             if (getIsNative()) {
-                const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+                // HATA VEREN SATIR SİLİNDİ, YERİNE GLOBAL CAPACITOR EKLENDİ
+                const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
                 const result = await FirebaseAuthentication.signInWithGoogle();
                 this.scene.start("Waiting", { token: result.credential.idToken });
             } else {
@@ -89,7 +89,8 @@ export default class Login extends Phaser.Scene {
     async handleAppleLogin() {
         this.statusText.setText("Apple ile bağlanılıyor...");
         try {
-            const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+            // HATA VEREN SATIR SİLİNDİ, YERİNE GLOBAL CAPACITOR EKLENDİ
+            const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
             const result = await FirebaseAuthentication.signInWithApple();
             this.scene.start("Waiting", { token: result.credential.idToken });
         } catch (err) {
