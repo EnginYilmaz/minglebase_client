@@ -16,7 +16,7 @@ let FirebaseAuthentication;
 if (isNative) {
     const capAuth = await import('@capacitor-firebase/authentication');
     FirebaseAuthentication = capAuth.FirebaseAuthentication;
-}
+}  
 
 export default class Login extends Phaser.Scene {
     constructor() {
