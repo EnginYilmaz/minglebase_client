@@ -25,6 +25,32 @@
                 "key": "cicekci_kiz"
             },
             {
+                "url": "assets/dilenci.png",
+                "frameConfig": {
+                    "frameWidth": 481,
+                    "frameHeight": 456,
+                    "startFrame": 8,
+                    "endFrame": 15,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "dilenci_yokluyor"
+            },
+            {
+                "url": "assets/dilenci.png",
+                "frameConfig": {
+                    "frameWidth": 481,
+                    "frameHeight": 456,
+                    "startFrame": 0,
+                    "endFrame": 7,
+                    "spacing": 0,
+                    "margin": 0
+                },
+                "type": "spritesheet",
+                "key": "dilenci_yuruyor"
+            },
+            {
                 "url": {
                     "IMG": "assets/kaldirim_tasi.png"
                 },
@@ -134,19 +160,6 @@
                 },
                 "type": "spritesheet",
                 "key": "kaykay_zipla"
-            },
-            {
-                "url": "assets/kaykayli_kiz.png",
-                "frameConfig": {
-                    "frameWidth": 625,
-                    "frameHeight": 327,
-                    "startFrame": 0,
-                    "endFrame": 63,
-                    "spacing": 0,
-                    "margin": 0
-                },
-                "type": "spritesheet",
-                "key": "kaykayli_kiz"
             },
             {
                 "url": "assets/saga.png",

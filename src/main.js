@@ -26,7 +26,7 @@ window.addEventListener('load', function () {
 	game.scene.add("Preload", Preload);
 	game.scene.add("Login", Login);
 	game.scene.add("Waiting", Waiting);
-	game.scene.add("UskudarSahilyolu", UskudarSahilyolu);
+	game.scene.add("uskudarsahilyolu", UskudarSahilyolu);
 	game.scene.add("Boot", Boot, true);
 });
 

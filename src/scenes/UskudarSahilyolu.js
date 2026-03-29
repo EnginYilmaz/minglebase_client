@@ -6,10 +6,10 @@ import KaykayliKiz from "../KaykayliKiz.js";
 
 /* START OF COMPILED CODE */
 
-export default class UskudarSahilyolu extends Phaser.Scene {
+export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 	constructor() {
-		super("UskudarSahilyolu");
+		super();
 
 		/* START-USER-CTR-CODE */
 		// Write your code here.
@@ -19,18 +19,44 @@ export default class UskudarSahilyolu extends Phaser.Scene {
 	/** @returns {void} */
 	editorCreate() {
 
-		// uskudarseasight
-		const uskudarseasight = this.add.tileSprite(0, 1.4525070190429688, 3136, 768, "uskudarseasight");
-		uskudarseasight.scaleY = 0.8457428782318994;
-		uskudarseasight.setOrigin(0, 0);
+		// Create dilenci animation before editor tries to play it
+		if (!this.anims.exists("dilenci_idle")) {
+			this.anims.create({
+				key: "dilenci_idle",
+				frames: this.anims.generateFrameNumbers("dilenci_yokluyor", { start: 0, end: 7 }),
+				frameRate: 8,
+				repeat: -1
+			});
+		}
 
-		// yerzemin — 2.5D perspective pavement strips
-		this._createPerspectivePavement();
+		if (!this.anims.exists("dilenci_yuruyor")) {
+			this.anims.create({
+				key: "dilenci_yuruyor",
+				frames: this.anims.generateFrameNumbers("dilenci_yuruyor", { start: 0, end: 7 }),
+				frameRate: 10,
+				repeat: -1
+			});
+		}
 
-		/** @type {Phaser.GameObjects.TileSprite} */
-		this.yerzemin = this.yerzeminStrips[0];
+		if (!this.anims.exists("dilenci_yokluyor")) {
+			this.anims.create({
+				key: "dilenci_yokluyor",
+				frames: this.anims.generateFrameNumbers("dilenci_yokluyor", { start: 0, end: 7 }),
+				frameRate: 10,
+				repeat: -1
+			});
+		}
 
-		this.events.emit("scene-awake");
+		if (!this.anims.exists("cicekci_yuru")) {
+			this.anims.create({
+				key: "cicekci_yuru",
+				frames: this.anims.generateFrameNumbers("cicekci_kiz", { start: 0, end: 15 }),
+				frameRate: 10,
+				repeat: -1
+			});
+		}
+
+		super.editorCreate();
 	}
 
 	/* START-USER-CODE */
@@ -50,53 +76,7 @@ export default class UskudarSahilyolu extends Phaser.Scene {
 	hareketCekiyor = false;
 	collidingWith = {}; // Hangi oyuncularla çarpışıldığını tutar
 
-	/** 2.5D perspective pavement — horizontal strips with progressive tile scaling */
-	_createPerspectivePavement() {
-		const numStrips = 20;
-		const groundTopY = 275;
-		const groundBottomY = 560;
-		const totalHeight = groundBottomY - groundTopY;
-		const stripHeight = totalHeight / numStrips;
-		const groundWidth = 1875;
-		const groundCenterX = groundWidth / 2;
 
-		// Tile scale: small at top (far away), large at bottom (near)
-		const minTileScaleX = 0.2;
-		const maxTileScaleX = 0.5;
-		const minTileScaleY = 0.6;
-		const maxTileScaleY = 1.5;
-
-		// Tint gradient: cooler/darker at top, warmer/brighter at bottom
-		const farR = 0x90, farG = 0x98, farB = 0xa8;
-		const nearR = 0xff, nearG = 0xff, nearB = 0xff;
-
-		this.yerzeminStrips = [];
-		for (let i = 0; i < numStrips; i++) {
-			const t = i / (numStrips - 1);
-			const y = groundTopY + stripHeight * i + stripHeight / 2;
-
-			// Quadratic ease for more natural perspective foreshortening
-			const easedT = t * t;
-
-			const tileScaleX = minTileScaleX + (maxTileScaleX - minTileScaleX) * easedT;
-			const tileScaleY = minTileScaleY + (maxTileScaleY - minTileScaleY) * easedT;
-
-			const strip = this.add.tileSprite(groundCenterX, y, groundWidth, stripHeight + 1, "kaldirim_tasi");
-			strip.setOrigin(0.5, 0.5);
-			strip.tileScaleX = tileScaleX;
-			strip.tileScaleY = tileScaleY;
-			strip.setDepth(2);
-			strip.setAlpha(0); // Make strips invisible
-
-			// Interpolate tint
-			const r = Math.round(farR + (nearR - farR) * t);
-			const g = Math.round(farG + (nearG - farG) * t);
-			const b = Math.round(farB + (nearB - farB) * t);
-			strip.setTint(Phaser.Display.Color.GetColor(r, g, b));
-
-			this.yerzeminStrips.push(strip);
-		}
-	}
 	derinNefesAliyor = false;
 	isUpPressed = false;
 	isDownPressed = false;
@@ -117,59 +97,13 @@ export default class UskudarSahilyolu extends Phaser.Scene {
 
 	create() {
 		this.editorCreate();
+		this.dilenci_baslat();
 
-		// ── Animasyonlar (çiçekçi kız) ──
-		if (!this.anims.exists("cicekci_yuru")) {
-			this.anims.create({ key: "cicekci_yuru", frames: this.anims.generateFrameNumbers("cicekci_kiz", { start: 0, end: 15 }), frameRate: 10, repeat: -1 });
-		}
-
-		const bgWidth = 1875;
-
-		// ── Kendi karakter oluştur (ayrı sınıftan) ──
-		const spawnX = (this.myData && this.myData.x) ? this.myData.x : bgWidth / 2;
-		this.karakterin = new KaykayliKiz(this, spawnX, 80);
-		this.karakterim = this.karakterin.sprite; // kısayol (kamera takibi, collider vs. için)
-
-		// ── Çiçekçi Kız NPC ──
-		this.cicekci = this.physics.add.sprite(bgWidth / 2 + 150, 80, "cicekci_kiz", 0);
-		this.cicekci.setScale(0.7);
-		this.cicekci.setOrigin(0.5, 0.5);
-		if (this.cicekci.body) {
-			this.cicekci.body.setAllowGravity(false);
-			this.cicekci.setBounce(0);
-			this.cicekci.body.setSize(80, 280);
-			this.cicekci.body.setOffset(101, 70);
-		}
-		this.cicekci.setDepth(KaykayliKiz.LANES[2].depth);
-		this.cicekci.y = 500;
-
-		// ── 2.5D Hat (lane) sistemi ──
+		// ── 2.5D Hat (lane) sistemi — set early for room handlers ──
 		this.LANE_CONFIG = KaykayliKiz.LANES;
 		this._isChangingLane = false;
 
-		// Yatay sınır (sadece X sınırı, gravity yok)
-		this.physics.world.setBounds(0, 0, bgWidth, 1000);
-
-		// Karakteri orta hatın zeminine yerleştir
-		this.karakterim.y = this.LANE_CONFIG[1].groundY;
-
-		// ── Klavye (ESDF + J/A/C/B) ──
-		this.cursors = this.input.keyboard.createCursorKeys();
-		this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
-		this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
-		this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
-		this.keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
-		this.keyJ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
-		this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
-		this.keyC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
-		this.keyB = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
-
-		// ── Kamera ──
-		this.cameras.main.setZoom(1.4);
-		this.cameras.main.setBounds(0, 0, bgWidth, 520);
-		this.cameras.main.startFollow(this.karakterim, true, 0.1, 0.1);
-
-		// ── Çok oyunculu mesaj dinleyicileri ──
+		// ── Çok oyunculu mesaj dinleyicileri (register EARLY) ──
 		if (this.room) {
 			this.room.onMessage("currentPlayers", (data) => {
 				data.players.forEach(p => this.createOtherPlayer(p));
@@ -196,17 +130,49 @@ export default class UskudarSahilyolu extends Phaser.Scene {
 					}
 				}
 			});
-
-			// ── Crush sistemi mesajları ──
 			this.room.onMessage("crushReceived", (data) => {
 				this.showCrushNotification(data.fromName || "Biri");
 			});
 			this.room.onMessage("crushSent", (data) => {
 				this.showInfoNotification("Crush gönderildi! <3");
 			});
-
 			this.room.send("ready");
 		}
+
+		const bgWidth = 1875;
+
+		// ── Kendi karakter oluştur (dinamik) ──
+		const spawnX = (this.myData && this.myData.x) ? this.myData.x : bgWidth / 2;
+		this.karakterin = new KaykayliKiz(this, spawnX, 80);
+		this.karakterim = this.karakterin.sprite;
+
+		// ── Çiçekçi Kız NPC (base class'tan gelen sprite'ı fizikle donat) ──
+		this.cicekci_baslat();
+		this.cicekci.setDepth(KaykayliKiz.LANES[2].depth);
+
+
+
+		// Yatay sınır (sadece X sınırı, gravity yok)
+		this.physics.world.setBounds(0, 0, bgWidth, 1000);
+
+		// Karakteri orta hatın zeminine yerleştir
+		this.karakterim.y = this.LANE_CONFIG[1].groundY;
+
+		// ── Klavye (ESDF + J/A/C/B) ──
+		this.cursors = this.input.keyboard.createCursorKeys();
+		this.keyE = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+		this.keyS = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+		this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+		this.keyF = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F);
+		this.keyJ = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.J);
+		this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+		this.keyC = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.C);
+		this.keyB = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
+
+		// ── Kamera ──
+		this.cameras.main.setZoom(1.4);
+		this.cameras.main.setBounds(0, 0, bgWidth, 520);
+		this.cameras.main.startFollow(this.karakterim, true, 0.1, 0.1);
 
 		// ── Firebase auth + eşleşme dinleyicisi ──
 		this.setupChatUI();
@@ -518,35 +484,23 @@ export default class UskudarSahilyolu extends Phaser.Scene {
 	update(time, delta) {
 		if (!this.karakterim || !this.karakterim.body) return;
 
-		// ── Çiçekçi kız AI (deterministic, Date.now tabanlı) ──
-		if (this.cicekci && this.cicekci.body) {
-			const ms = Date.now() % 12000;
-			const globalTimeSec = ms / 1000;
-			const anchorX = 3136 / 2;
-			let targetX = anchorX;
-			if (globalTimeSec < 4) {
-				targetX = anchorX + globalTimeSec * 60;
-				this.cicekci.setVelocityX(60);
-				this.cicekci.flipX = false;
-				this.cicekci.play("cicekci_yuru", true);
-			} else if (globalTimeSec < 6) {
-				targetX = anchorX + 240;
-				this.cicekci.setVelocityX(0);
-				this.cicekci.stop();
-				this.cicekci.setFrame(0);
-			} else if (globalTimeSec < 10) {
-				targetX = anchorX + 240 - ((globalTimeSec - 6) * 60);
-				this.cicekci.setVelocityX(-60);
-				this.cicekci.flipX = true;
-				this.cicekci.play("cicekci_yuru", true);
-			} else {
-				targetX = anchorX;
-				this.cicekci.setVelocityX(0);
-				this.cicekci.stop();
-				this.cicekci.setFrame(0);
+		// ── Çiçekçi kız AI (base class metodu) ──
+		this.cicekci_guncelle();
+
+		// ── Dilenci AI: en yakın oyuncuya git (deterministik, tüm client'lar aynı sonucu görür) ──
+		let closestX = this.karakterim.x;
+		let closestY = this.karakterim.y;
+		let closestDist = Phaser.Math.Distance.Between(this.sprite_1.x, this.sprite_1.y, closestX, closestY);
+		for (const id in this.otherPlayers) {
+			const other = this.otherPlayers[id];
+			const d = Phaser.Math.Distance.Between(this.sprite_1.x, this.sprite_1.y, other.x, other.y);
+			if (d < closestDist) {
+				closestDist = d;
+				closestX = other.x;
+				closestY = other.y;
 			}
-			this.cicekci.setX(targetX);
 		}
+		this.dilenci_update(closestX, closestY);
 
 		// Sunucuya pozisyon gönder
 		if (this.room) {

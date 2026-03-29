@@ -8,18 +8,61 @@
         "borderWidth": 1875,
         "borderHeight": 640
     },
-    "displayList": [],
-    "plainObjects": [
+    "displayList": [
         {
-            "id": "f24416f9-a442-49e5-83c1-10856b62e7ff",
-            "type": "Collider",
-            "label": "collider",
-            "scope": "LOCAL",
-            "object1": "yerzemin",
-            "object2": "karakterim",
-            "overlapOnly": true
+            "type": "TileSprite",
+            "id": "118da920-ee5d-41ac-9a5d-7025d7175a1f",
+            "label": "uskudarseasight",
+            "texture": {
+                "key": "uskudarseasight"
+            },
+            "scaleY": 0.85,
+            "originX": 0,
+            "originY": 0,
+            "width": 1875,
+            "height": 768
+        },
+        {
+            "type": "Sprite",
+            "id": "65eeafa4-34ea-4811-b41b-76678ddc7925",
+            "label": "sprite_1",
+            "hitArea.shape": "RECTANGLE",
+            "hitArea.width": 39,
+            "hitArea.height": 32,
+            "texture": {
+                "key": "dilenci_yuruyor",
+                "frame": 0
+            },
+            "x": 1236,
+            "y": 376,
+            "scaleX": 0.43500281694338416,
+            "scaleY": 0.7749486502826686,
+            "visible": false,
+            "animationPlayMethod": 1,
+            "animationKey": "dilenci_yuruyor",
+            "animationCustomConfig": true,
+            "animationTimeScale": 7,
+            "animationPreview": true
+        },
+        {
+            "type": "Sprite",
+            "id": "7b900543-cb4f-42cf-a0ed-51bc27bb8f0a",
+            "label": "sprite_2",
+            "hitArea.shape": "RECTANGLE",
+            "hitArea.width": 32,
+            "hitArea.height": 32,
+            "texture": {
+                "key": "dilenci",
+                "frame": 9
+            },
+            "x": 1209,
+            "y": 333,
+            "visible": false,
+            "animationPlayMethod": 1,
+            "animationKey": "dilenci_yokluyor"
         }
     ],
+    "plainObjects": [],
     "meta": {
         "app": "Phaser Editor - Scene Editor",
         "url": "https://phaser.io/editor",

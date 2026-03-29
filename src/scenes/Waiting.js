@@ -2,8 +2,8 @@
 
 import { Client } from "https://esm.sh/@colyseus/sdk@0.17.17";
 
-//const SERVER_URL = "ws://localhost:2567";
-const SERVER_URL = "https://nl-ams-86abf15c.colyseus.cloud";
+const SERVER_URL = "ws://localhost:2567";
+// const SERVER_URL = "https://nl-ams-86abf15c.colyseus.cloud";
 export default class Waiting extends Phaser.Scene {
     constructor() {
         super("Waiting");
@@ -56,7 +56,7 @@ export default class Waiting extends Phaser.Scene {
         // transitioned flag prevents Waiting's stale handlers from restarting Level
         if (this.myData && this.startReceived && !this.transitioned) {
             this.transitioned = true;
-            this.scene.start("UskudarSahilyolu", { room: this.room, me: this.myData });
+            this.scene.start("uskudarsahilyolu", { room: this.room, me: this.myData });
         }
     }
 
