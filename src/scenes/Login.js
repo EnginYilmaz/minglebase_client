@@ -8,7 +8,13 @@ function ensureFirebase() {
 }
 
 function getPlatform() {
-    return window.Capacitor ? window.Capacitor.getPlatform() : 'web';
+    if (window.Capacitor) return window.Capacitor.getPlatform();
+    // Detect iOS Safari when not running in Capacitor
+    const ua = navigator.userAgent || '';
+    if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        return 'ios';
+    }
+    return 'web';
 }
 
 function getIsNative() {
