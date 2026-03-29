@@ -7,16 +7,13 @@ function ensureFirebase() {
     return getAuth(app);
 }
 
-// Detect platform: native Capacitor or web
-const isNative = window.Capacitor && window.Capacitor.getPlatform() !== 'web';
-const platform = window.Capacitor ? window.Capacitor.getPlatform() : 'web';
+function getPlatform() {
+    return window.Capacitor ? window.Capacitor.getPlatform() : 'web';
+}
 
-// Lazy-load Capacitor modules only on native
-let FirebaseAuthentication;
-if (isNative) {
-    const capAuth = await import('@capacitor-firebase/authentication');
-    FirebaseAuthentication = capAuth.FirebaseAuthentication;
-}  
+function getIsNative() {
+    return window.Capacitor && window.Capacitor.getPlatform() !== 'web';
+}
 
 export default class Login extends Phaser.Scene {
     constructor() {
@@ -25,6 +22,7 @@ export default class Login extends Phaser.Scene {
 
     create() {
         const { width, height } = this.scale;
+        const platform = getPlatform();
 
         // Arka plan
         this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e);
@@ -66,7 +64,8 @@ export default class Login extends Phaser.Scene {
     async handleGoogleLogin() {
         this.statusText.setText("Google ile giriş yapılıyor...");
         try {
-            if (isNative) {
+            if (getIsNative()) {
+                const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
                 const result = await FirebaseAuthentication.signInWithGoogle();
                 this.scene.start("Waiting", { token: result.credential.idToken });
             } else {
@@ -84,6 +83,7 @@ export default class Login extends Phaser.Scene {
     async handleAppleLogin() {
         this.statusText.setText("Apple ile bağlanılıyor...");
         try {
+            const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
             const result = await FirebaseAuthentication.signInWithApple();
             this.scene.start("Waiting", { token: result.credential.idToken });
         } catch (err) {
