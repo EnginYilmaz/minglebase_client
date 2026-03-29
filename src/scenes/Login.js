@@ -1,15 +1,10 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { firebaseConfig } from "../firebase-config.js";
 
-let firebaseApp;
-let firebaseAuth;
-
-try {
-    firebaseApp = initializeApp(firebaseConfig);
-    firebaseAuth = getAuth(firebaseApp);
-} catch (e) {
-    console.error("Firebase init error:", e);
+function ensureFirebase() {
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    return getAuth(app);
 }
 
 // Detect platform: native Capacitor or web
@@ -75,8 +70,9 @@ export default class Login extends Phaser.Scene {
                 const result = await FirebaseAuthentication.signInWithGoogle();
                 this.scene.start("Waiting", { token: result.credential.idToken });
             } else {
+                const auth = ensureFirebase();
                 const provider = new GoogleAuthProvider();
-                const result = await signInWithPopup(firebaseAuth, provider);
+                const result = await signInWithPopup(auth, provider);
                 const idToken = await result.user.getIdToken();
                 this.scene.start("Waiting", { token: idToken });
             }
