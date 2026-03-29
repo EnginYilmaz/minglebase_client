@@ -1,7 +1,5 @@
-import { FirebaseAuthentication } from '@capacitor-firebase/authentication';
-import { Capacitor } from '@capacitor/core'; // Platform kontrolü için ekledik
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { firebaseConfig } from "../firebase-config.js";
 
 let firebaseApp;
@@ -14,6 +12,17 @@ try {
     console.error("Firebase init error:", e);
 }
 
+// Detect platform: native Capacitor or web
+const isNative = window.Capacitor && window.Capacitor.getPlatform() !== 'web';
+const platform = window.Capacitor ? window.Capacitor.getPlatform() : 'web';
+
+// Lazy-load Capacitor modules only on native
+let FirebaseAuthentication;
+if (isNative) {
+    const capAuth = await import('@capacitor-firebase/authentication');
+    FirebaseAuthentication = capAuth.FirebaseAuthentication;
+}
+
 export default class Login extends Phaser.Scene {
     constructor() {
         super("Login");
@@ -21,7 +30,6 @@ export default class Login extends Phaser.Scene {
 
     create() {
         const { width, height } = this.scale;
-        const platform = Capacitor.getPlatform();
 
         // Arka plan
         this.add.rectangle(width / 2, height / 2, width, height, 0x1a1a2e);
@@ -63,9 +71,15 @@ export default class Login extends Phaser.Scene {
     async handleGoogleLogin() {
         this.statusText.setText("Google ile giriş yapılıyor...");
         try {
-            // ARTIK NATIVE KULLANIYORUZ:
-            const result = await FirebaseAuthentication.signInWithGoogle();
-            this.scene.start("Waiting", { token: result.credential.idToken });
+            if (isNative) {
+                const result = await FirebaseAuthentication.signInWithGoogle();
+                this.scene.start("Waiting", { token: result.credential.idToken });
+            } else {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(firebaseAuth, provider);
+                const idToken = await result.user.getIdToken();
+                this.scene.start("Waiting", { token: idToken });
+            }
         } catch (err) {
             this.statusText.setText("Giriş hatası: " + err.message);
         }
