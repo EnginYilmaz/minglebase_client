@@ -70,10 +70,10 @@ async handleGoogleLogin() {
         this.statusText.setText("Google ile giriş yapılıyor...");
         try {
             if (getIsNative()) {
-                // HATA VEREN SATIR SİLİNDİ, YERİNE GLOBAL CAPACITOR EKLENDİ
                 const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
-                const result = await FirebaseAuthentication.signInWithGoogle();
-                this.scene.start("Waiting", { token: result.credential.idToken });
+                await FirebaseAuthentication.signInWithGoogle();
+                const { token } = await FirebaseAuthentication.getIdToken();
+                this.scene.start("Waiting", { token });
             } else {
                 const auth = ensureFirebase();
                 const provider = new GoogleAuthProvider();
@@ -89,10 +89,10 @@ async handleGoogleLogin() {
     async handleAppleLogin() {
         this.statusText.setText("Apple ile bağlanılıyor...");
         try {
-            // HATA VEREN SATIR SİLİNDİ, YERİNE GLOBAL CAPACITOR EKLENDİ
             const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
-            const result = await FirebaseAuthentication.signInWithApple();
-            this.scene.start("Waiting", { token: result.credential.idToken });
+            await FirebaseAuthentication.signInWithApple();
+            const { token } = await FirebaseAuthentication.getIdToken();
+            this.scene.start("Waiting", { token });
         } catch (err) {
             this.statusText.setText("Apple hatası: " + err.message);
         }
