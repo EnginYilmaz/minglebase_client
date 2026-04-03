@@ -273,6 +273,19 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						this.matchedUids[targetUid] = true;
 						this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
 						this.openChatUI(targetUid, targetSprite.name || "Rakip");
+					} else if (result && result.status === "already_sent") {
+						try {
+							const freshMatches = await getMutualMatches(myUid);
+							if (freshMatches[targetUid]) {
+								this.matchedUids[targetUid] = true;
+								this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
+								this.openChatUI(targetUid, targetSprite.name || "Rakip");
+							} else {
+								this.showInfoNotification("Crush zaten gönderildi, karşılık bekleniyor... <3");
+							}
+						} catch (_e) {
+							this.showInfoNotification("Crush zaten gönderildi, karşılık bekleniyor... <3");
+						}
 					} else {
 						this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
 						this.crushButton.setVisible(false);
@@ -280,6 +293,18 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 					}
 				} catch (err) {
 					console.error("Crush gönderme hatası:", err);
+					try {
+						const myUidFb = this.myData && (this.myData.uid || this.myData.odaUid);
+						if (myUidFb && targetUid) {
+							const freshMatches = await getMutualMatches(myUidFb);
+							if (freshMatches[targetUid]) {
+								this.matchedUids[targetUid] = true;
+								this.showInfoNotification("EŞLEŞTİNİZ! ✨");
+								this.openChatUI(targetUid, targetSprite.name || "Rakip");
+								return;
+							}
+						}
+					} catch (_e2) { /* ignore */ }
 					this.showInfoNotification("Crush gönderilemedi: " + err.message);
 				}
 			}
