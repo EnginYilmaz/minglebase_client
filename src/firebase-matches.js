@@ -1,10 +1,12 @@
-import { getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
   getFirestore, collection, query, where, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
 
 function getDb() {
-    return getFirestore(getApp());
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    return getFirestore(app);
 }
 
 export async function getMutualMatches(myUid) {

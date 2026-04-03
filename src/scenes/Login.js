@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { firebaseConfig } from "../firebase-config.js";
 
 function ensureFirebase() {
@@ -27,6 +27,9 @@ export default class Login extends Phaser.Scene {
     }
 
     create() {
+        // Always initialize Firebase Web SDK (needed for Firestore on all platforms)
+        ensureFirebase();
+
         const { width, height } = this.scale;
         const platform = getPlatform();
 
@@ -64,16 +67,28 @@ export default class Login extends Phaser.Scene {
         guestBtn.on("pointerdown", () => this.handleGuestLogin());
 
         // Durum metni (+280)
-        this.statusText = this.add.text(width / 2, height / 2 + 280, "", { fontSize: "24px", color: "#ff6666" }).setOrigin(0.5);
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const statusFontSize = isMobile ? "32px" : "24px";
+        this.statusText = this.add.text(width / 2, height / 2 + 280, "", { fontSize: statusFontSize, color: "#ff6666" }).setOrigin(0.5);
+//      this.statusText = this.add.text(width / 2, height / 2 + 280, "", { fontSize: "24px", color: "#ff6666" }).setOrigin(0.5);
     }
 async handleGoogleLogin() {
         this.statusText.setText("Google ile giriş yapılıyor...");
         try {
             if (getIsNative()) {
                 const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
-                await FirebaseAuthentication.signInWithGoogle();
-                const { token } = await FirebaseAuthentication.getIdToken();
-                this.scene.start("Waiting", { token });
+                const result = await FirebaseAuthentication.signInWithGoogle();
+
+                // Sync native auth → Web Firebase SDK (Firestore için gerekli)
+                const auth = ensureFirebase();
+                const idToken = result.credential?.idToken;
+                if (idToken) {
+                    const credential = GoogleAuthProvider.credential(idToken);
+                    await signInWithCredential(auth, credential);
+                }
+
+                const tokenResult = await FirebaseAuthentication.getIdToken();
+                this.scene.start("Waiting", { token: tokenResult.token });
             } else {
                 const auth = ensureFirebase();
                 const provider = new GoogleAuthProvider();

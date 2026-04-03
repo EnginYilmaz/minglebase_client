@@ -1,5 +1,5 @@
 // You can write more code here
-import { getDb, checkMatchAndCrush, listenToMessages, sendSimsMessage } from "../firebase-chat.js";
+import { getDb, sendCrush, listenToMessages, sendSimsMessage } from "../firebase-chat.js";
 import { getMutualMatches } from "../firebase-matches.js";
 import { collection, query, where, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import KaykayliKiz from "../KaykayliKiz.js";
@@ -176,46 +176,28 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		// ── Firebase auth + eşleşme dinleyicisi ──
 		this.setupChatUI();
+
+		// Room uid'den eşleşme sistemini başlat (tüm platformlarda çalışır)
+		const roomUid = this.myData && (this.myData.uid || this.myData.odaUid);
+		console.log("[BADGE] roomUid:", roomUid, "myData keys:", this.myData ? Object.keys(this.myData) : "null");
+		if (roomUid) {
+			this.initMatchSystem(roomUid);
+		} else {
+			console.warn("[BADGE] roomUid boş! myData:", JSON.stringify(this.myData));
+		}
+
+		// Web platformunda Firebase Auth ile daha doğru uid al
 		import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then((authModule) => {
 			const { getAuth, onAuthStateChanged } = authModule;
 			onAuthStateChanged(getAuth(), async (user) => {
+				console.log("[BADGE] onAuthStateChanged fired, user:", user ? user.uid : "null", "roomUid:", roomUid);
 				if (user) {
-					this.myData = user;
-					this.matchedUids = await getMutualMatches(user.uid);
-
-					if (!window.matchesListenerInitialized && this.myData && this.myData.uid) {
-						window.matchesListenerInitialized = true;
-						window.startupTime = Date.now();
-						const db = getDb();
-						const crushesRef = collection(db, "crushes");
-						const targetIdQuery = query(crushesRef, where("toId", "==", this.myData.uid));
-						onSnapshot(targetIdQuery, (snapshot) => {
-							snapshot.docChanges().forEach((change) => {
-								if (change.type === "added") {
-									const docData = change.doc.data();
-									const senderUid = docData.fromId;
-									const myCrushesQuery = query(crushesRef, where("fromId", "==", this.myData.uid), where("toId", "==", senderUid));
-									getDocs(myCrushesQuery).then(mySnap => {
-										if (!mySnap.empty) {
-											this.matchedUids[senderUid] = true;
-											if (Date.now() - window.startupTime < 2000) return;
-											let senderName = "Rakip";
-											for (const sessionId in this.otherPlayers) {
-												if (this.otherPlayers[sessionId].uid === senderUid) {
-													senderName = this.otherPlayers[sessionId].name;
-													break;
-												}
-											}
-											const chatContainer = document.getElementById("chat-ui-container");
-											if (chatContainer && chatContainer.style.display !== "flex") {
-												this.showInfoNotification("Biriyle eşleştin! Chat açılıyor... ✨");
-												this.openChatUI(senderUid, senderName);
-											}
-										}
-									});
-								}
-							});
-						});
+					// Colyseus verisini kaybetmemek için sadece Firebase uid'yi sakla
+					this._firebaseUid = user.uid;
+					// Web auth farklı uid verdiyse tekrar başlat
+					if (user.uid !== roomUid) {
+						console.log("[BADGE] Firebase uid farklı, yeniden initMatchSystem:", user.uid);
+						this.initMatchSystem(user.uid);
 					}
 				}
 			});
@@ -236,6 +218,23 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		.setVisible(false)
 		.setInteractive({ useHandCursor: true });
 
+		// ── Okunmamış mesaj badge (kırmızı daire + sayı) ──
+		this.badgeCircle = this.add.circle(0, 0, 12, 0xff2222)
+			.setScrollFactor(0)
+			.setDepth(10001)
+			.setVisible(false);
+
+		this.badgeText = this.add.text(0, 0, "", {
+			fontFamily: "Arial",
+			fontSize: "13px",
+			color: "#ffffff",
+			fontStyle: "bold",
+		})
+			.setOrigin(0.5, 0.5)
+			.setScrollFactor(0)
+			.setDepth(10002)
+			.setVisible(false);
+
 		this.crushButton.on("pointerdown", async () => {
 			if (this.crushTargetId && this.room) {
 				const targetSessionId = this.crushTargetId;
@@ -244,26 +243,44 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 				const targetUid = targetSprite.uid;
 				if (!targetUid) return;
 
-				if (this.matchedUids && this.matchedUids[targetUid]) {
-					this.openChatUI(targetUid, targetSprite.name || "Rakip");
+				const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
+				if (!myUid) {
+					this.showInfoNotification("Giriş yapılmamış, crush gönderilemedi.");
 					return;
 				}
 
-				const isMatched = await checkMatchAndCrush(this.myData.uid, targetUid);
-
-				if (!this.crushSentTo[targetSessionId]) {
-					this.room.send("crush", { targetSessionId: targetSessionId });
+				if (this.matchedUids && this.matchedUids[targetUid]) {
+					const chatContainer = document.getElementById("chat-ui-container");
+					if (chatContainer && chatContainer.style.display === "flex") {
+						chatContainer.style.display = "none";
+						window.activeChatTargetUid = null;
+					} else {
+						this.openChatUI(targetUid, targetSprite.name || "Rakip");
+					}
+					return;
 				}
-				this.crushSentTo[targetSessionId] = true;
 
-				if (isMatched) {
-					this.matchedUids[targetUid] = true;
-					this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
-					this.openChatUI(targetUid, targetSprite.name || "Rakip");
-				} else {
-					this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
-					this.crushButton.setVisible(false);
-					this.crushTargetId = null;
+				try {
+					const result = await sendCrush(myUid, targetUid);
+					const isMatched = result && result.status === "mutual";
+
+					if (!this.crushSentTo[targetSessionId]) {
+						this.room.send("crush", { targetSessionId: targetSessionId });
+					}
+					this.crushSentTo[targetSessionId] = true;
+
+					if (isMatched) {
+						this.matchedUids[targetUid] = true;
+						this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
+						this.openChatUI(targetUid, targetSprite.name || "Rakip");
+					} else {
+						this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
+						this.crushButton.setVisible(false);
+						this.crushTargetId = null;
+					}
+				} catch (err) {
+					console.error("Crush gönderme hatası:", err);
+					this.showInfoNotification("Crush gönderilemedi: " + err.message);
 				}
 			}
 		});
@@ -325,6 +342,92 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}, () => {});
 	}
 
+	// ── Eşleşme sistemi başlat (tüm platformlarda çalışır) ─────────
+	async initMatchSystem(uid) {
+		if (this._matchSystemUid === uid) return;
+		this._matchSystemUid = uid;
+		console.log("[BADGE] initMatchSystem başladı, uid:", uid);
+
+		try {
+			this.matchedUids = await getMutualMatches(uid);
+		} catch (err) {
+			console.error("getMutualMatches hatası:", err);
+			this.matchedUids = {};
+		}
+
+		// ── Bağımsız gelen mesaj dinleyicisi (badge için) ──
+		const db = getDb();
+		const msgRef = collection(db, "messages");
+		const incomingQuery = query(msgRef, where("receiverId", "==", uid));
+		this._lastIncomingCount = null;
+		this._currentIncomingTotal = 0;
+		console.log("[BADGE] Firestore listener kuruluyor, receiverId:", uid);
+		onSnapshot(incomingQuery, (snapshot) => {
+			const totalIncoming = snapshot.size;
+			this._currentIncomingTotal = totalIncoming;
+			console.log("[BADGE] snapshot geldi, totalIncoming:", totalIncoming, "lastCount:", this._lastIncomingCount);
+			// İlk yüklenmede mevcut mesaj sayısını kaydet (bunlar zaten okunmuş)
+			if (this._lastIncomingCount === null) {
+				this._lastIncomingCount = totalIncoming;
+				console.log("[BADGE] İlk snapshot, baseline:", totalIncoming);
+				return;
+			}
+			const chatContainer = document.getElementById("chat-ui-container");
+			const chatOpen = chatContainer && chatContainer.style.display === "flex";
+			if (chatOpen) {
+				// Chat açık, okunmuş say
+				this._lastIncomingCount = totalIncoming;
+				window.unreadMessageCount = 0;
+				console.log("[BADGE] Chat açık, badge sıfırlandı");
+			} else {
+				const newCount = totalIncoming - this._lastIncomingCount;
+				console.log("[BADGE] Chat kapalı, newCount:", newCount);
+				if (newCount > 0) {
+					// Chat kapalı — badge göster
+					window.unreadMessageCount = newCount;
+					this.updateBadge(newCount);
+					console.log("[BADGE] Badge güncellendi:", newCount);
+				}
+			}
+		}, (error) => {
+			console.error("[BADGE] Incoming message listener hatası:", error);
+		});
+
+		if (!window.matchesListenerInitialized) {
+			window.matchesListenerInitialized = true;
+			window.startupTime = Date.now();
+			const crushesRef = collection(db, "crushes");
+			const targetIdQuery = query(crushesRef, where("toId", "==", uid));
+			onSnapshot(targetIdQuery, (snapshot) => {
+				snapshot.docChanges().forEach((change) => {
+					if (change.type === "added") {
+						const docData = change.doc.data();
+						const senderUid = docData.fromId;
+						const myCrushesQuery = query(crushesRef, where("fromId", "==", uid), where("toId", "==", senderUid));
+						getDocs(myCrushesQuery).then(mySnap => {
+							if (!mySnap.empty) {
+								this.matchedUids[senderUid] = true;
+								if (Date.now() - window.startupTime < 2000) return;
+								let senderName = "Rakip";
+								for (const sessionId in this.otherPlayers) {
+									if (this.otherPlayers[sessionId].uid === senderUid) {
+										senderName = this.otherPlayers[sessionId].name;
+										break;
+									}
+								}
+								const chatContainer = document.getElementById("chat-ui-container");
+								if (chatContainer && chatContainer.style.display !== "flex") {
+									this.showInfoNotification("Biriyle eşleştin! Chat açılıyor... ✨");
+									this.openChatUI(senderUid, senderName);
+								}
+							}
+						});
+					}
+				});
+			});
+		}
+	}
+
 	// ── Chat UI ──────────────────────────────────────────────────────
 	setupChatUI() {
 		const chatContainer = document.getElementById("chat-ui-container");
@@ -340,8 +443,9 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		const handleSend = () => {
 			const text = inputField.value.trim();
-			if (text && window.activeChatTargetUid && this.myData && this.myData.uid) {
-				sendSimsMessage(this.myData.uid, window.activeChatTargetUid, text);
+			const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
+			if (text && window.activeChatTargetUid && myUid) {
+				sendSimsMessage(myUid, window.activeChatTargetUid, text);
 				inputField.value = "";
 			}
 		};
@@ -355,18 +459,29 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 	openChatUI(targetUid, targetName) {
 		const chatContainer = document.getElementById("chat-ui-container");
 		const chatMessages = document.getElementById("chat-messages");
-		if (chatContainer) {
+		const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
+		if (chatContainer && myUid) {
+			// Sohbet açılınca badge'i sıfırla
+			window.unreadMessageCount = 0;
+			// Gelen mesaj sayısını güncelle — artık hepsi okunmuş
+			if (this._currentIncomingTotal != null) {
+				this._lastIncomingCount = this._currentIncomingTotal;
+			}
+			if (this.badgeCircle) this.badgeCircle.setVisible(false);
+			if (this.badgeText) this.badgeText.setVisible(false);
+
 			chatContainer.style.display = "flex";
 			window.activeChatTargetUid = targetUid;
 			chatContainer.querySelector("h3").innerText = targetName + " ile Sohbet";
-			listenToMessages(this.myData.uid, targetUid, (messages) => {
+
+			listenToMessages(myUid, targetUid, (messages) => {
 				chatMessages.innerHTML = "";
 				messages.forEach(msg => {
 					const msgEl = document.createElement("div");
 					msgEl.style.marginBottom = "8px";
 					msgEl.style.padding = "5px";
 					msgEl.style.borderRadius = "4px";
-					if (msg.senderId === this.myData.uid) {
+					if (msg.senderId === myUid) {
 						msgEl.style.backgroundColor = "#e1ffc7";
 						msgEl.style.color = "#000000";
 						msgEl.style.wordBreak = "break-word";
@@ -387,6 +502,30 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 				setTimeout(() => { chatMessages.scrollTop = chatMessages.scrollHeight; }, 50);
 			});
 		}
+	}
+
+	// ── Badge güncelle ─────────────────────────────────────────────
+	updateBadge(count) {
+		if (!this.badgeCircle || !this.badgeText) return;
+		if (count <= 0) {
+			this.badgeCircle.setVisible(false);
+			this.badgeText.setVisible(false);
+			return;
+		}
+		// Crush butonu görünürse onun sağ üstüne, değilse ekranın sağ alt köşesine sabit
+		const cam = this.cameras.main;
+		const z = cam.zoom;
+		let bx, by;
+		if (this.crushButton && this.crushButton.visible) {
+			bx = this.crushButton.x + 50;
+			by = this.crushButton.y - 22;
+		} else {
+			// Sabit sağ alt köşe (kamera koordinatı değil, canvas koordinatı)
+			bx = cam.width  / 2 + (cam.width  / 2 - 30) / z;
+			by = cam.height / 2 + (cam.height / 2 - 30) / z;
+		}
+		this.badgeCircle.setPosition(bx, by).setVisible(true);
+		this.badgeText.setText(count > 9 ? "9+" : String(count)).setPosition(bx, by).setVisible(true);
 	}
 
 	// ── Bildirimler ──────────────────────────────────────────────────
@@ -586,9 +725,19 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			const btnY = cam.height / 2 + (cam.height / 2 - 60) / z;
 			this.crushButton.setPosition(btnX, btnY);
 			this.crushButton.setVisible(true);
+			// Badge konumunu güncelle (okunmamış varsa göster)
+			if (window.unreadMessageCount > 0) {
+				this.updateBadge(window.unreadMessageCount);
+			}
 		} else {
 			this.crushButton.setVisible(false);
 			this.crushTargetId = null;
+			if (this.badgeCircle) this.badgeCircle.setVisible(false);
+			if (this.badgeText) this.badgeText.setVisible(false);
+			// Crush butonu gizli ama okunmamış mesaj varsa sabit konumda badge göster
+			if (window.unreadMessageCount > 0) {
+				this.updateBadge(window.unreadMessageCount);
+			}
 		}
 
 		// ── Manuel çarpışma: diğer oyuncularla (sadece aynı hat) ──

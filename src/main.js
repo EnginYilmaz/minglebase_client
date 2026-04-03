@@ -30,15 +30,6 @@ window.addEventListener('load', function () {
 	game.scene.add("Boot", Boot, true);
 });
 
-class Boot extends Phaser.Scene {
-
-	preload() {
-		
-                this.load.pack("boot-pack", "assets/preload-asset-pack.json");
-		this.scene.start("Preload");
-	}
-}
-
 class Preload extends Phaser.Scene {
 
 	constructor() {
@@ -51,5 +42,14 @@ class Preload extends Phaser.Scene {
 
 	create() {
 		this.scene.start("Login");
+	}
+}
+
+class Boot extends Phaser.Scene {
+
+	preload() {
+		
+		this.load.pack("boot-pack", "assets/preload-asset-pack.json");
+		this.scene.start("Preload");
 	}
 }

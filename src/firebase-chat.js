@@ -1,4 +1,4 @@
-import { getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
   getFirestore, 
   collection, 
@@ -13,9 +13,11 @@ import {
   onSnapshot,
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
 
 function getDb() {
-    return getFirestore(getApp());
+    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    return getFirestore(app);
 }
 
 /**
@@ -25,46 +27,62 @@ function getDb() {
  * @returns {Promise<boolean>} - Returns true if mutual, false if one-way.
  */
 export { getDb };
-export async function checkMatchAndCrush(currentUid, targetUid) {
+export async function sendCrush(fromId, toId) {
   const db = getDb();
   const crushesRef = collection(db, "crushes");
 
+  // Prevent users from crushing themselves
+  if (fromId === toId) {
+    console.warn("User tried to crush themselves.");
+    return { status: "self_crush_not_allowed" };
+  }
+
+  const crushQuery = query(
+    crushesRef,
+    where("fromId", "==", fromId),
+    where("toId", "==", toId)
+  );
+
   try {
-    // 1. Check if the current user already sent a crush (prevents duplicates)
-    const myCrushQuery = query(
-      crushesRef,
-      where("fromId", "==", currentUid),
-      where("toId", "==", targetUid)
-    );
-    const myCrushSnap = await getDocs(myCrushQuery);
+    const querySnapshot = await getDocs(crushQuery);
 
-    // 2. If no crush sent yet, create one
-    if (myCrushSnap.empty) {
+    if (querySnapshot.empty) {
+      // No existing crush, so create one
       await addDoc(crushesRef, {
-        fromId: currentUid,
-        toId: targetUid,
-        timestamp: serverTimestamp()
+        fromId: fromId,
+        toId: toId,
+        timestamp: serverTimestamp(),
       });
-    }
 
-    // 3. Check if they crushed back (Mutual Check)
-    const theirCrushQuery = query(
-      crushesRef,
-      where("fromId", "==", targetUid),
-      where("toId", "==", currentUid)
-    );
-    const theirCrushSnap = await getDocs(theirCrushQuery);
+      // Now, check if the other person has already crushed back
+      const mutualCrushQuery = query(
+        crushesRef,
+        where("fromId", "==", toId),
+        where("toId", "==", fromId)
+      );
+      const mutualCrushSnapshot = await getDocs(mutualCrushQuery);
 
-    // 4. Handle UI / Match Logic
-    if (!theirCrushSnap.empty) {
-      return true; // Mutual match
+      if (!mutualCrushSnapshot.empty) {
+        return { status: "mutual" }; // It's a match!
+      } else {
+        return { status: "sent" }; // Crush sent, but not yet mutual
+      }
     } else {
-      return false; // One-way crush
+      // Crush already sent — still check if they crushed back
+      const mutualCrushQuery = query(
+        crushesRef,
+        where("fromId", "==", toId),
+        where("toId", "==", fromId)
+      );
+      const mutualCrushSnapshot = await getDocs(mutualCrushQuery);
+      if (!mutualCrushSnapshot.empty) {
+        return { status: "mutual" };
+      }
+      return { status: "already_sent" };
     }
-
   } catch (error) {
-    console.error("Error processing crush:", error);
-    return false;
+    console.error("Error sending crush:", error);
+    throw error; // Re-throw the error to be handled by the caller
   }
 }
 
@@ -78,33 +96,54 @@ export function listenToMessages(currentUid, targetUid, onMessageReceived) {
 
   const db = getDb();
   const messagesRef = collection(db, "messages");
-  
-  const chatQuery = query(
+
+  let sentMsgs = [];
+  let recvMsgs = [];
+
+  const mergeAndNotify = () => {
+    const all = [...sentMsgs, ...recvMsgs];
+    all.sort((a, b) => {
+      const ta = a.createdAt ? (a.createdAt.seconds || 0) : 0;
+      const tb = b.createdAt ? (b.createdAt.seconds || 0) : 0;
+      return ta - tb;
+    });
+    if (onMessageReceived) onMessageReceived(all);
+  };
+
+  // Query 1: Messages I sent to target
+  const sentQuery = query(
     messagesRef,
-    where("senderId", "in", [currentUid, targetUid]),
-    where("receiverId", "in", [currentUid, targetUid]),
-    orderBy("createdAt", "asc")
+    where("senderId", "==", currentUid),
+    where("receiverId", "==", targetUid)
   );
 
-  unsubscribeChat = onSnapshot(chatQuery, (snapshot) => {
-    let messages = [];
-    snapshot.forEach((docSnap) => {
-      const msg = docSnap.data();
-      const isRelevant = 
-        (msg.senderId === currentUid && msg.receiverId === targetUid) ||
-        (msg.senderId === targetUid && msg.receiverId === currentUid);
+  // Query 2: Messages target sent to me
+  const recvQuery = query(
+    messagesRef,
+    where("senderId", "==", targetUid),
+    where("receiverId", "==", currentUid)
+  );
 
-      if (isRelevant) {
-        messages.push(msg);
-      }
-    });
-
-    if (onMessageReceived) {
-        onMessageReceived(messages);
-    }
+  const unsub1 = onSnapshot(sentQuery, (snapshot) => {
+    sentMsgs = [];
+    snapshot.forEach((docSnap) => sentMsgs.push(docSnap.data()));
+    mergeAndNotify();
   }, (error) => {
-      console.error("Firebase listenToMessages hatası: ", error);
+    console.error("listenToMessages sent query hatası:", error);
   });
+
+  const unsub2 = onSnapshot(recvQuery, (snapshot) => {
+    recvMsgs = [];
+    snapshot.forEach((docSnap) => recvMsgs.push(docSnap.data()));
+    mergeAndNotify();
+  }, (error) => {
+    console.error("listenToMessages recv query hatası:", error);
+  });
+
+  unsubscribeChat = () => {
+    unsub1();
+    unsub2();
+  };
 }
 
 
