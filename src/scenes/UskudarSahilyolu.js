@@ -186,11 +186,10 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			console.warn("[BADGE] roomUid boş! myData:", JSON.stringify(this.myData));
 		}
 
-		// Firebase Auth - Web SDK ile uid al
+		// Web platformunda Firebase Auth ile daha doğru uid al
 		import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then((authModule) => {
 			const { getAuth, onAuthStateChanged } = authModule;
-			const auth = getAuth();
-			onAuthStateChanged(auth, async (user) => {
+			onAuthStateChanged(getAuth(), async (user) => {
 				console.log("[BADGE] onAuthStateChanged fired, user:", user ? user.uid : "null", "roomUid:", roomUid);
 				if (user) {
 					// Colyseus verisini kaybetmemek için sadece Firebase uid'yi sakla
@@ -200,9 +199,6 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						console.log("[BADGE] Firebase uid farklı, yeniden initMatchSystem:", user.uid);
 						this.initMatchSystem(user.uid);
 					}
-				} else if (roomUid) {
-					// Web SDK auth yok ama Colyseus uid var (iOS Apple login durumu)
-					console.log("[BADGE] Web SDK auth yok, roomUid ile devam:", roomUid);
 				}
 			});
 		});
