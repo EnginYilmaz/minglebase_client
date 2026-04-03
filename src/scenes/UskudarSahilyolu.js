@@ -206,10 +206,10 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		// ── Crush butonu (başlangıçta gizli) ──
 		this.crushButton = this.add.text(0, 0, "Crush <3", {
 			fontFamily: "Arial",
-			fontSize: "20px",
+			fontSize: "28px",
 			color: "#ffffff",
 			backgroundColor: "#e91e63",
-			padding: { x: 14, y: 10 },
+			padding: { x: 22, y: 14 },
 			align: "center",
 		})
 		.setOrigin(0.5, 0.5)
@@ -722,7 +722,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			const cam = this.cameras.main;
 			const z = cam.zoom;
 			const btnX = cam.width / 2;
-			const btnY = cam.height / 2 + (cam.height / 2 - 60) / z;
+			const btnY = cam.height / 2 + (cam.height / 2 - 120) / z;
 			this.crushButton.setPosition(btnX, btnY);
 			this.crushButton.setVisible(true);
 			// Badge konumunu güncelle (okunmamış varsa göster)
