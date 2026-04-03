@@ -58,23 +58,25 @@ export default class Login extends Phaser.Scene {
             fontSize: "28px", color: "#aaaaff",
         }).setOrigin(0.5);
 
-        // --- 1. GOOGLE BUTONU ---
-        const googleBtn = this.add.rectangle(width / 2, height / 2 + 20, 400, 70, 0x4285f4, 1).setInteractive({ useHandCursor: true });
-        this.add.text(width / 2, height / 2 + 20, "Google ile Giriş", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
-        googleBtn.on("pointerdown", () => this.handleGoogleLogin());
+        // --- 1. GOOGLE BUTONU (iOS'ta gizle) ---
+        if (platform !== 'ios') {
+            const googleBtn = this.add.rectangle(width / 2, height / 2 + 20, 400, 70, 0x4285f4, 1).setInteractive({ useHandCursor: true });
+            this.add.text(width / 2, height / 2 + 20, "Google ile Giriş", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+            googleBtn.on("pointerdown", () => this.handleGoogleLogin());
+        }
 
-        // --- 2. APPLE BUTONU (Sadece iOS'ta gösterelim ki Android/Web bozulmasın) ---
+        // --- 2. APPLE BUTONU (Sadece iOS'ta göster) ---
         if (platform === 'ios') {
-            const appleBtn = this.add.rectangle(width / 2, height / 2 + 110, 400, 70, 0x000000, 1).setInteractive({ useHandCursor: true });
-            this.add.text(width / 2, height / 2 + 110, " Apple ile Sürdür", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+            const appleBtn = this.add.rectangle(width / 2, height / 2 + 20, 400, 70, 0x000000, 1).setInteractive({ useHandCursor: true });
+            this.add.text(width / 2, height / 2 + 20, " Apple ile Sürdür", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
             
             appleBtn.on("pointerover", () => appleBtn.setFillStyle(0x333333));
             appleBtn.on("pointerout", () => appleBtn.setFillStyle(0x000000));
             appleBtn.on("pointerdown", () => this.handleAppleLogin());
         }
 
-        // --- 3. MİSAFİR BUTONU (Yeri aşağı kaydırıldı: +200) ---
-        const guestBtnY = (platform === 'ios') ? height / 2 + 200 : height / 2 + 110; // iOS değilse Apple'ın yerine geçsin
+        // --- 3. MİSAFİR BUTONU ---
+        const guestBtnY = height / 2 + 110;
         const guestBtn = this.add.rectangle(width / 2, guestBtnY, 400, 70, 0x555555, 1).setInteractive({ useHandCursor: true });
         this.add.text(width / 2, guestBtnY, "Misafir Olarak Gir", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
         guestBtn.on("pointerdown", () => this.handleGuestLogin());
