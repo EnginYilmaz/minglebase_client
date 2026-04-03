@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, initializeAuth, indexedDBLocalPersistence, GoogleAuthProvider, OAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, initializeAuth, indexedDBLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { firebaseConfig } from "../firebase-config.js";
 
 function ensureFirebase() {
@@ -120,24 +120,7 @@ async handleGoogleLogin() {
         this.statusText.setText("Apple ile bağlanılıyor...");
         try {
             const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
-            const result = await FirebaseAuthentication.signInWithApple();
-
-            // Native Apple auth → Web Firebase SDK sync (best-effort)
-            // Capacitor native plugin nonce'u kendi yönetiyor,
-            // Web SDK'ya replay her zaman çalışmayabilir (localhost origin sorunu).
-            try {
-                const auth = ensureFirebase();
-                const idToken = result.credential?.idToken;
-                const nonce = result.credential?.nonce;
-                if (idToken) {
-                    const provider = new OAuthProvider('apple.com');
-                    const oauthCredential = provider.credential({ idToken, rawNonce: nonce });
-                    await signInWithCredential(auth, oauthCredential);
-                }
-            } catch (syncErr) {
-                console.warn("Apple Web SDK sync başarısız (native token ile devam ediliyor):", syncErr.message);
-            }
-
+            await FirebaseAuthentication.signInWithApple();
             const { token } = await FirebaseAuthentication.getIdToken();
             this.scene.start("Waiting", { token });
         } catch (err) {
