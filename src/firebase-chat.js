@@ -21,7 +21,7 @@ function getDb() {
     if (_db) return _db;
     const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
     try {
-        _db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+        _db = initializeFirestore(app, { experimentalForceLongPolling: true });
     } catch (_e) {
         _db = getFirestore(app);
     }
