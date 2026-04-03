@@ -187,21 +187,25 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}
 
 		// Web platformunda Firebase Auth ile daha doğru uid al
-		import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then((authModule) => {
-			const { getAuth, onAuthStateChanged } = authModule;
-			onAuthStateChanged(getAuth(), async (user) => {
-				console.log("[BADGE] onAuthStateChanged fired, user:", user ? user.uid : "null", "roomUid:", roomUid);
-				if (user) {
-					// Colyseus verisini kaybetmemek için sadece Firebase uid'yi sakla
-					this._firebaseUid = user.uid;
-					// Web auth farklı uid verdiyse tekrar başlat
-					if (user.uid !== roomUid) {
-						console.log("[BADGE] Firebase uid farklı, yeniden initMatchSystem:", user.uid);
-						this.initMatchSystem(user.uid);
+		// Capacitor (native) ortamda gapi.iframes CORS hatası veriyor, sadece web'de çalıştır
+		const isNative = typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+		if (!isNative) {
+			import("https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js").then((authModule) => {
+				const { getAuth, onAuthStateChanged } = authModule;
+				onAuthStateChanged(getAuth(), async (user) => {
+					console.log("[BADGE] onAuthStateChanged fired, user:", user ? user.uid : "null", "roomUid:", roomUid);
+					if (user) {
+						this._firebaseUid = user.uid;
+						if (user.uid !== roomUid) {
+							console.log("[BADGE] Firebase uid farklı, yeniden initMatchSystem:", user.uid);
+							this.initMatchSystem(user.uid);
+						}
 					}
-				}
+				});
 			});
-		});
+		} else {
+			console.log("[BADGE] Native platform, Firebase Auth Web SDK atlanıyor");
+		}
 
 		// ── Crush butonu (başlangıçta gizli) ──
 		this.crushButton = this.add.text(0, 0, "Crush <3", {

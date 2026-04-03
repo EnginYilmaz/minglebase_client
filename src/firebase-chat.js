@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-  getFirestore, 
+  getFirestore,
+  initializeFirestore,
   collection, 
   doc,
   addDoc, 
@@ -15,9 +16,16 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
+let _db = null;
 function getDb() {
+    if (_db) return _db;
     const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    return getFirestore(app);
+    try {
+        _db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+    } catch (_e) {
+        _db = getFirestore(app);
+    }
+    return _db;
 }
 
 /**
