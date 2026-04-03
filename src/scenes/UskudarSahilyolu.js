@@ -236,19 +236,25 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			.setVisible(false);
 
 		this.crushButton.on("pointerdown", async () => {
+			console.log("[CRUSH] Button pressed, crushTargetId:", this.crushTargetId, "room:", !!this.room);
 			if (this.crushTargetId && this.room) {
 				const targetSessionId = this.crushTargetId;
 				const targetSprite = this.otherPlayers && this.otherPlayers[targetSessionId];
-				if (!targetSprite) return;
+				console.log("[CRUSH] targetSessionId:", targetSessionId, "targetSprite:", !!targetSprite);
+				if (!targetSprite) { console.warn("[CRUSH] targetSprite yok, return"); return; }
 				const targetUid = targetSprite.uid;
-				if (!targetUid) return;
+				console.log("[CRUSH] targetUid:", targetUid);
+				if (!targetUid) { console.warn("[CRUSH] targetUid yok, return"); return; }
 
 				const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
+				console.log("[CRUSH] myUid:", myUid, "myData:", JSON.stringify(this.myData));
 				if (!myUid) {
+					console.warn("[CRUSH] myUid boş!");
 					this.showInfoNotification("Giriş yapılmamış, crush gönderilemedi.");
 					return;
 				}
 
+				console.log("[CRUSH] matchedUids:", JSON.stringify(this.matchedUids), "target matched?", this.matchedUids && this.matchedUids[targetUid]);
 				if (this.matchedUids && this.matchedUids[targetUid]) {
 					const chatContainer = document.getElementById("chat-ui-container");
 					if (chatContainer && chatContainer.style.display === "flex") {
@@ -261,7 +267,9 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 				}
 
 				try {
+					console.log("[CRUSH] sendCrush başlıyor, myUid:", myUid, "targetUid:", targetUid);
 					const result = await sendCrush(myUid, targetUid);
+					console.log("[CRUSH] sendCrush sonuç:", JSON.stringify(result));
 					const isMatched = result && result.status === "mutual";
 
 					if (!this.crushSentTo[targetSessionId]) {
@@ -274,8 +282,10 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
 						this.openChatUI(targetUid, targetSprite.name || "Rakip");
 					} else if (result && result.status === "already_sent") {
+						console.log("[CRUSH] already_sent, getMutualMatches kontrol ediliyor...");
 						try {
 							const freshMatches = await getMutualMatches(myUid);
+							console.log("[CRUSH] freshMatches:", JSON.stringify(freshMatches));
 							if (freshMatches[targetUid]) {
 								this.matchedUids[targetUid] = true;
 								this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
@@ -292,7 +302,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						this.crushTargetId = null;
 					}
 				} catch (err) {
-					console.error("Crush gönderme hatası:", err);
+					console.error("[CRUSH] HATA:", err, err.message, err.stack);
 					try {
 						const myUidFb = this.myData && (this.myData.uid || this.myData.odaUid);
 						if (myUidFb && targetUid) {
