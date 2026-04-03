@@ -1,9 +1,22 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, initializeAuth, indexedDBLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { firebaseConfig } from "../firebase-config.js";
 
 function ensureFirebase() {
     const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    // Capacitor iOS/Android'de varsayılan persistence (cookie/iframe tabanlı)
+    // capacitor://localhost origin'i yüzünden hata verir.
+    // indexedDBLocalPersistence kullanarak bu sorunu atlıyoruz.
+    if (getIsNative()) {
+        try {
+            return initializeAuth(app, {
+                persistence: indexedDBLocalPersistence
+            });
+        } catch (_e) {
+            // Zaten initialize edilmişse getAuth kullan
+            return getAuth(app);
+        }
+    }
     return getAuth(app);
 }
 
