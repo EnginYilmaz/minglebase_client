@@ -233,27 +233,6 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		// ── Mobil butonlar ──
 		this.createMobileControls();
 	}
-		// ── Okunmamış mesaj badge (kırmızı daire + sayı) ──
-		this.badgeCircle = this.add.circle(0, 0, 12, 0xff2222)
-			.setScrollFactor(0)
-			.setDepth(10001)
-			.setVisible(false);
-
-		this.badgeText = this.add.text(0, 0, "", {
-			fontFamily: "Arial",
-			fontSize: "13px",
-			color: "#ffffff",
-			fontStyle: "bold",
-		})
-			.setOrigin(0.5, 0.5)
-			.setScrollFactor(0)
-			.setDepth(10002)
-			.setVisible(false);
-
-		this.crushButton.on("pointerdown", this._handleCrushButtonPress, this);
-
-		this._crushButtonMode = null;
-	}
 
 	// ── Crush butonu yeniden oluştur (iOS render sorunları için) ──
 	_recreateCrushButton(mode) {
