@@ -86,6 +86,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 	crushTargetId = null;
 	crushSentTo = {};
 	matchedUids = {};
+	_crushButtonMode = null;
 	sevgiGosteriyor = false;
 
 	init(data) {
@@ -283,6 +284,9 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 					if (isMatched) {
 						this.matchedUids[targetUid] = true;
+						this._crushButtonMode = 'sohbet';
+						this.crushButton.setText("Sohbet");
+						this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
 						this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
 						this.openChatUI(targetUid, targetSprite.name || "Rakip");
 					} else if (result && result.status === "already_sent") {
@@ -292,6 +296,9 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 							console.log("[CRUSH] freshMatches:", JSON.stringify(freshMatches));
 							if (freshMatches[targetUid]) {
 								this.matchedUids[targetUid] = true;
+								this._crushButtonMode = 'sohbet';
+								this.crushButton.setText("Sohbet");
+								this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
 								this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
 								this.openChatUI(targetUid, targetSprite.name || "Rakip");
 							} else {
@@ -313,6 +320,9 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 							const freshMatches = await getMutualMatches(myUidFb);
 							if (freshMatches[targetUid]) {
 								this.matchedUids[targetUid] = true;
+								this._crushButtonMode = 'sohbet';
+								this.crushButton.setText("Sohbet");
+								this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
 								this.showInfoNotification("EŞLEŞTİNİZ! ✨");
 								this.openChatUI(targetUid, targetSprite.name || "Rakip");
 								return;
@@ -446,6 +456,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						getDocs(myCrushesQuery).then(mySnap => {
 							if (!mySnap.empty) {
 								this.matchedUids[senderUid] = true;
+								this._crushButtonMode = null; // force re-evaluate on next frame
 								if (Date.now() - window.startupTime < 2000) return;
 								let senderName = "Rakip";
 								for (const sessionId in this.otherPlayers) {
@@ -748,15 +759,22 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			}
 		}
 		if (closestCrushId) {
+			if (this.crushTargetId !== closestCrushId) {
+				this._crushButtonMode = null; // new target, force re-evaluate
+			}
 			this.crushTargetId = closestCrushId;
 			const targetSprite = this.otherPlayers[this.crushTargetId];
 			const targetUid = targetSprite ? targetSprite.uid : null;
-			if (this.matchedUids && targetUid && this.matchedUids[targetUid]) {
-				this.crushButton.setText("Sohbet");
-				this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
-			} else {
-				this.crushButton.setText("Crush <3");
-				this.crushButton.setStyle({ backgroundColor: "#e91e63" });
+			const wantMode = (this.matchedUids && targetUid && this.matchedUids[targetUid]) ? 'sohbet' : 'crush';
+			if (this._crushButtonMode !== wantMode) {
+				this._crushButtonMode = wantMode;
+				if (wantMode === 'sohbet') {
+					this.crushButton.setText("Sohbet");
+					this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
+				} else {
+					this.crushButton.setText("Crush <3");
+					this.crushButton.setStyle({ backgroundColor: "#e91e63" });
+				}
 			}
 			const cam = this.cameras.main;
 			const z = cam.zoom;
@@ -771,6 +789,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		} else {
 			this.crushButton.setVisible(false);
 			this.crushTargetId = null;
+			this._crushButtonMode = null;
 			if (this.badgeCircle) this.badgeCircle.setVisible(false);
 			if (this.badgeText) this.badgeText.setVisible(false);
 			// Crush butonu gizli ama okunmamış mesaj varsa sabit konumda badge göster
