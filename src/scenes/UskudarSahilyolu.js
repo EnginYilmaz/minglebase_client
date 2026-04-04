@@ -297,8 +297,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						this.crushButton.setText("Sohbet");
 						this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
 						this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
-						// DON'T open chat automatically, let the user click the new "Sohbet" button
-						// this.openChatUI(targetUid, targetSprite.name || "Rakip");
+						this.openChatUI(targetUid, targetSprite.name || "Rakip");
 					} else if (result && result.status === "already_sent") {
 						console.log("[CRUSH] already_sent, getMutualMatches kontrol ediliyor...");
 						try {
@@ -310,8 +309,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 								this.crushButton.setText("Sohbet");
 								this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
 								this.showInfoNotification("EŞLEŞTİNİZ! ✨");
-								// DON'T open chat automatically
-								// this.openChatUI(targetUid, targetSprite.name || "Rakip");
+								this.openChatUI(targetUid, targetSprite.name || "Rakip");
 							} else {
 								this.showInfoNotification("Crush zaten gönderildi, karşılık bekleniyor... <3");
 							}
@@ -335,8 +333,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 								this.crushButton.setText("Sohbet");
 								this.crushButton.setStyle({ backgroundColor: "#4CAF50" });
 								this.showInfoNotification("EŞLEŞTİNİZ! ✨");
-								// DON'T open chat automatically
-								// this.openChatUI(targetUid, targetSprite.name || "Rakip");
+								this.openChatUI(targetUid, targetSprite.name || "Rakip");
 								return;
 							}
 						}
