@@ -313,6 +313,12 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			return;
 		}
 
+		// Zaten eşleşilmişse doğrudan sohbet aç
+		if (this.matchedUids && this.matchedUids[targetUid]) {
+			this.openChatUI(targetUid, targetSprite.name || "Rakip");
+			return;
+		}
+
 		// Crush gönderme işlemini başlat
 		try {
 			const result = await sendCrush(myUid, targetUid);
@@ -761,9 +767,13 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		this.crushTargetId = closestCrushId; // Hedefi her zaman güncelle
 
 		if (this.crushTargetId) {
-			// Buton yoksa oluştur (her zaman crush modu)
-			if (this._crushButtonMode !== 'crush' || !this.crushButton) {
-				this._recreateCrushButton('crush');
+			// Eşleşme durumuna göre buton modunu belirle
+			const targetSprite = this.otherPlayers[this.crushTargetId];
+			const targetUid = targetSprite && targetSprite.uid;
+			const isTargetMatched = targetUid && this.matchedUids && this.matchedUids[targetUid];
+			const desiredMode = isTargetMatched ? 'sohbet' : 'crush';
+			if (this._crushButtonMode !== desiredMode || !this.crushButton) {
+				this._recreateCrushButton(desiredMode);
 			}
 			// Her durumda butonu görünür yap
 			this.crushButton.setVisible(true);
