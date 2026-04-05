@@ -2,6 +2,33 @@ import Login from "./scenes/Login.js";
 import Waiting from "./scenes/Waiting.js";
 import UskudarSahilyolu from "./scenes/UskudarSahilyolu.js";
 
+class Preload extends Phaser.Scene {
+
+	constructor() {
+		super("Preload");
+	}
+
+	preload() {
+		this.load.pack("pack", "assets/asset-pack.json");
+	}
+
+	create() {
+		this.scene.start("Login");
+	}
+}
+
+class Boot extends Phaser.Scene {
+
+	preload() {
+		
+		this.load.pack("boot-pack", "assets/preload-asset-pack.json");
+	}
+
+	create() {
+		this.scene.start("Preload");
+	}
+}
+
 window.addEventListener('load', function () {
 
 	var game = new Phaser.Game({
@@ -29,27 +56,3 @@ window.addEventListener('load', function () {
 	game.scene.add("uskudarsahilyolu", UskudarSahilyolu);
 	game.scene.add("Boot", Boot, true);
 });
-
-class Preload extends Phaser.Scene {
-
-	constructor() {
-		super("Preload");
-	}
-
-	preload() {
-		this.load.pack("pack", "assets/asset-pack.json");
-	}
-
-	create() {
-		this.scene.start("Login");
-	}
-}
-
-class Boot extends Phaser.Scene {
-
-	preload() {
-		
-		this.load.pack("boot-pack", "assets/preload-asset-pack.json");
-		this.scene.start("Preload");
-	}
-}

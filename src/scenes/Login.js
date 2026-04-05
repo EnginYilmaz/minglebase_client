@@ -68,6 +68,12 @@ export default class Login extends Phaser.Scene {
         this.add.text(width / 2, guestBtnY, "Misafir Olarak Gir", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
         guestBtn.on("pointerdown", () => this.handleGuestLogin());
 
+        // --- 4. FİRESTORE TEST BUTONU ---
+        const firestoreBtnY = height / 2 + 200;
+        const firestoreBtn = this.add.rectangle(width / 2, firestoreBtnY, 400, 70, 0xff8c00, 1).setInteractive({ useHandCursor: true });
+        this.add.text(width / 2, firestoreBtnY, "Firestore Test", { fontSize: "30px", color: "#ffffff", fontStyle: "bold" }).setOrigin(0.5);
+        firestoreBtn.on("pointerdown", () => this.handleFirestoreTest());
+
         // Durum metni (+280)
         const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
         const statusFontSize = isMobile ? "32px" : "24px";
@@ -117,5 +123,29 @@ async handleGoogleLogin() {
 
     handleGuestLogin() {
         this.scene.start("Waiting", { token: null });
+    }
+
+    async handleFirestoreTest() {
+        this.statusText.setText("Firestore'a yazma denemesi...");
+        try {
+            const { getFirestore, doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+            const auth = ensureFirebase();
+            const db = getFirestore(auth.app);
+
+            console.log("Firestore'a yazılıyor...");
+            await setDoc(doc(db, "testCollection", `testDoc_${new Date().getTime()}`), {
+                timestamp: new Date(),
+                uid: auth.currentUser ? auth.currentUser.uid : "anonymous",
+                platform: getPlatform()
+            });
+
+            console.log("Firestore yazma BAŞARILI!");
+            this.statusText.setText("Firestore yazma BAŞARILI!");
+            this.cameras.main.flash(500, 50, 255, 50); // Yeşil flaş
+        } catch (error) {
+            console.error("Firestore HATA:", error);
+            this.statusText.setText("HATA: " + error.message);
+            this.cameras.main.flash(500, 255, 50, 50); // Kırmızı flaş
+        }
     }
 }
