@@ -328,7 +328,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 				if (isMatched) {
 					this.matchedUids[targetUid] = true;
-					this._recreateCrushButton('sohbet'); // YENİDEN OLUŞTUR
+					this.time.delayedCall(1, () => this._recreateCrushButton('sohbet')); // Gecikmeli yeniden oluştur
 					this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
 					this.openChatUI(targetUid, targetSprite.name || "Rakip");
 				} else if (result && result.status === "already_sent") {
@@ -338,7 +338,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						console.log("[CRUSH] freshMatches:", JSON.stringify(freshMatches));
 						if (freshMatches[targetUid]) {
 							this.matchedUids[targetUid] = true;
-							this._recreateCrushButton('sohbet'); // YENİDEN OLUŞTUR
+							this.time.delayedCall(1, () => this._recreateCrushButton('sohbet')); // Gecikmeli yeniden oluştur
 							this.showInfoNotification("EŞLEŞTİNİZ! ✨");
 							this.openChatUI(targetUid, targetSprite.name || "Rakip");
 						} else {
@@ -360,7 +360,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						const freshMatches = await getMutualMatches(myUidFb);
 						if (freshMatches[targetUid]) {
 							this.matchedUids[targetUid] = true;
-							this._recreateCrushButton('sohbet'); // YENİDEN OLUŞTUR
+							this.time.delayedCall(1, () => this._recreateCrushButton('sohbet')); // Gecikmeli yeniden oluştur
 							this.showInfoNotification("EŞLEŞTİNİZ! ✨");
 							this.openChatUI(targetUid, targetSprite.name || "Rakip");
 							return;
