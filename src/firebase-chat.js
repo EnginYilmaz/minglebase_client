@@ -28,7 +28,7 @@ async function getDb() {
 
   try {
     _db = initializeFirestore(app, {
-      experimentalForceLongPolling: true,
+      //experimentalForceLongPolling: true,
       useFetchStreams: false,
     });
   } catch (e) {
