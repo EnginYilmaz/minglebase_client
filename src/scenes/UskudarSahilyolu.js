@@ -277,99 +277,70 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 	// ── Crush butonu tıklama yönetimi ───────────────────────────────
 	async _handleCrushButtonPress() {
-		console.log("[CRUSH] Button pressed, crushTargetId:", this.crushTargetId, "room:", !!this.room);
-		if (this.crushTargetId && this.room) {
-			const targetSessionId = this.crushTargetId;
-			const targetSprite = this.otherPlayers && this.otherPlayers[targetSessionId];
-			console.log("[CRUSH] targetSessionId:", targetSessionId, "targetSprite:", !!targetSprite);
-			if (!targetSprite) { console.warn("[CRUSH] targetSprite yok, return"); return; }
-			const targetUid = targetSprite.uid;
-			console.log("[CRUSH] targetUid:", targetUid);
-			if (!targetUid) { console.warn("[CRUSH] targetUid yok, return"); return; }
+		if (!this.crushTargetId || !this.room) return;
 
-			const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
-			console.log("[CRUSH] myUid:", myUid, "myData:", JSON.stringify(this.myData));
-			if (!myUid) {
-				console.warn("[CRUSH] myUid boş!");
-				this.showInfoNotification("Giriş yapılmamış, crush gönderilemedi.");
-				return;
+		const targetSessionId = this.crushTargetId;
+		const targetSprite = this.otherPlayers?.[targetSessionId];
+		if (!targetSprite) {
+			console.warn("[CRUSH] Hedef oyuncu sprite'ı bulunamadı.");
+			return;
+		}
+
+		const targetUid = targetSprite.uid;
+		const myUid = this.myData?.uid || this.myData?.odaUid;
+
+		if (!targetUid || !myUid) {
+			this.showInfoNotification("Kimlik bilgileri eksik, işlem yapılamadı.");
+			return;
+		}
+
+		// 1. Zaten eşleşmiş mi diye KONTROL ET
+		if (this.matchedUids?.[targetUid]) {
+			// Eşleşme varsa, sohbeti aç/kapat
+			const chatContainer = document.getElementById("chat-ui-container");
+			if (chatContainer?.style.display === "flex") {
+				chatContainer.style.display = "none";
+				window.activeChatTargetUid = null;
+			} else {
+				this.openChatUI(targetUid, targetSprite.name || "Rakip");
 			}
+			return; // İşlem tamam, fonksiyondan çık
+		}
 
-			console.log("[CRUSH] matchedUids:", JSON.stringify(this.matchedUids), "target matched?", this.matchedUids && this.matchedUids[targetUid]);
-			if (this.matchedUids && this.matchedUids[targetUid]) {
-				// Already matched, just open/close chat
-				const chatContainer = document.getElementById("chat-ui-container");
-				if (chatContainer && chatContainer.style.display === "flex") {
-					chatContainer.style.display = "none";
-					window.activeChatTargetUid = null;
-				} else {
-					this.openChatUI(targetUid, targetSprite.name || "Rakip");
-				}
-				return;
-			}
+		// 2. Eşleşme YOKSA, crush gönderme işlemini başlat
+		if (this._isSendingCrush) {
+			console.log("[CRUSH] Zaten bir crush gönderiliyor, bekleyin.");
+			return;
+		}
 
-			// If not matched, check if a crush is already being sent
-			if (this._isSendingCrush) {
-				console.log("[CRUSH] Already sending, ignoring tap.");
-				return;
-			}
+		this._isSendingCrush = true;
+		try {
+			const result = await sendCrush(myUid, targetUid);
+			const isMatched = result?.status === "mutual";
 
-			this._isSendingCrush = true;
-			try {
-				console.log("[CRUSH] sendCrush başlıyor, myUid:", myUid, "targetUid:", targetUid);
-				const result = await sendCrush(myUid, targetUid);
-				console.log("[CRUSH] sendCrush sonuç:", JSON.stringify(result));
-				const isMatched = result && result.status === "mutual";
-
-				if (!this.crushSentTo[targetSessionId]) {
-					this.room.send("crush", { targetSessionId: targetSessionId });
-				}
+			// Sunucuya crush etkileşimi olduğunu bildir (animasyon vb. için)
+			if (!this.crushSentTo[targetSessionId]) {
+				this.room.send("crush", { targetSessionId: targetSessionId });
 				this.crushSentTo[targetSessionId] = true;
-
-				if (isMatched) {
-					this.matchedUids[targetUid] = true;
-					this.time.delayedCall(1, () => this._recreateCrushButton('sohbet')); // Gecikmeli yeniden oluştur
-					this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
-					this.openChatUI(targetUid, targetSprite.name || "Rakip");
-				} else if (result && result.status === "already_sent") {
-					console.log("[CRUSH] already_sent, getMutualMatches kontrol ediliyor...");
-					try {
-						const freshMatches = await getMutualMatches(myUid);
-						console.log("[CRUSH] freshMatches:", JSON.stringify(freshMatches));
-						if (freshMatches[targetUid]) {
-							this.matchedUids[targetUid] = true;
-							this.time.delayedCall(1, () => this._recreateCrushButton('sohbet')); // Gecikmeli yeniden oluştur
-							this.showInfoNotification("EŞLEŞTİNİZ! ✨");
-							this.openChatUI(targetUid, targetSprite.name || "Rakip");
-						} else {
-							this.showInfoNotification("Crush zaten gönderildi, karşılık bekleniyor... <3");
-						}
-					} catch (_e) {
-						this.showInfoNotification("Crush zaten gönderildi, karşılık bekleniyor... <3");
-					}
-				} else {
-					this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
-					this.crushTargetId = null; // Hedefi temizle ki update döngüsü butonu gizlesin
-				}
-			} catch (err) {
-				console.error("[CRUSH] HATA:", err, err.message, err.stack);
-				try {
-					const myUidFb = this.myData && (this.myData.uid || this.myData.odaUid);
-					if (myUidFb && targetUid) {
-						const freshMatches = await getMutualMatches(myUidFb);
-						if (freshMatches[targetUid]) {
-							this.matchedUids[targetUid] = true;
-							this.time.delayedCall(1, () => this._recreateCrushButton('sohbet')); // Gecikmeli yeniden oluştur
-							this.showInfoNotification("EŞLEŞTİNİZ! ✨");
-							this.openChatUI(targetUid, targetSprite.name || "Rakip");
-							return;
-						}
-					}
-				} catch (_e2) { /* ignore */ }
-				this.showInfoNotification("Crush gönderilemedi: " + err.message);
-			} finally {
-				this._isSendingCrush = false;
 			}
+
+			if (isMatched) {
+				this.matchedUids[targetUid] = true;
+				this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
+				// Gecikmeli yap ki "Eşleştiniz" bildirimi görünsün
+				this.time.delayedCall(1000, () => {
+					this._recreateCrushButton('sohbet');
+					this.openChatUI(targetUid, targetSprite.name || "Rakip");
+				});
+			} else {
+				this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
+				// Butonun tekrar 'crush' modunda kalmasını sağla, hedefi temizleme
+			}
+		} catch (err) {
+			console.error("[CRUSH] HATA:", err);
+			this.showInfoNotification("Crush gönderilemedi: " + (err.message || "Bilinmeyen bir hata oluştu."));
+		} finally {
+			this._isSendingCrush = false;
 		}
 	}
 
@@ -776,52 +747,54 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		this.karakterin.enforceSize();
 
 		// ── Crush butonu: 200px yakınlıktaki oyuncuya göster ──
-		if (!this.crushSentTo) this.crushSentTo = {};
 		const crushRadius = 200;
 		let closestCrushId = null;
 		let closestCrushDist = Infinity;
+
 		for (const id in this.otherPlayers) {
 			const other = this.otherPlayers[id];
-			// Sadece aynı hattaki oyuncularla crush
 			const otherLane = other.lane !== undefined ? other.lane : 1;
 			if (otherLane !== this.karakterin.currentLane) continue;
-			const dx = Math.abs(this.karakterim.x - other.x);
-			const dy = Math.abs(this.karakterim.y - other.y);
-			const dist = Math.sqrt(dx * dx + dy * dy);
-			if (dist < crushRadius && dy < 100 && dist < closestCrushDist) {
+
+			const dist = Phaser.Math.Distance.Between(this.karakterim.x, this.karakterim.y, other.x, other.y);
+			if (dist < crushRadius && dist < closestCrushDist) {
 				closestCrushDist = dist;
 				closestCrushId = id;
 			}
 		}
-		if (closestCrushId) {
-			if (this.crushTargetId !== closestCrushId) {
-				this._crushButtonMode = null; // new target, force re-evaluate
-			}
-			this.crushTargetId = closestCrushId;
+
+		this.crushTargetId = closestCrushId; // Hedefi her zaman güncelle
+
+		if (this.crushTargetId) {
 			const targetSprite = this.otherPlayers[this.crushTargetId];
-			const targetUid = targetSprite ? targetSprite.uid : null;
-			const wantMode = (this.matchedUids && targetUid && this.matchedUids[targetUid]) ? 'sohbet' : 'crush';
+			const targetUid = targetSprite?.uid;
+			const isAlreadyMatched = !!(targetUid && this.matchedUids?.[targetUid]);
+			const wantMode = isAlreadyMatched ? 'sohbet' : 'crush';
 
-			if (this._crushButtonMode !== wantMode) {
+			// Buton modu değiştiyse veya buton hiç yoksa yeniden oluştur
+			if (this._crushButtonMode !== wantMode || !this.crushButton) {
 				this._recreateCrushButton(wantMode);
-			} else {
-				// Buton zaten doğru modda, sadece görünür yap
-				this.crushButton.setVisible(true);
 			}
+			// Her durumda butonu görünür yap
+			this.crushButton.setVisible(true);
 
-			// Badge konumunu güncelle (okunmamış varsa göster)
+			// Badge konumunu güncelle
 			if (window.unreadMessageCount > 0) {
 				this.updateBadge(window.unreadMessageCount);
 			}
 		} else {
-			if (this.crushButton) this.crushButton.setVisible(false);
-			this.crushTargetId = null;
-			this._crushButtonMode = null;
-			if (this.badgeCircle) this.badgeCircle.setVisible(false);
-			if (this.badgeText) this.badgeText.setVisible(false);
-			// Crush butonu gizli ama okunmamış mesaj varsa sabit konumda badge göster
+			// Yakında kimse yoksa butonu gizle
+			if (this.crushButton && this.crushButton.visible) {
+				this.crushButton.setVisible(false);
+			}
+			this._crushButtonMode = null; // Modu sıfırla
+
+			// Uzaktayken okunmamış mesaj varsa badge'i sabit konumda göster
 			if (window.unreadMessageCount > 0) {
 				this.updateBadge(window.unreadMessageCount);
+			} else {
+				if (this.badgeCircle) this.badgeCircle.setVisible(false);
+				if (this.badgeText) this.badgeText.setVisible(false);
 			}
 		}
 
