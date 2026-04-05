@@ -146,32 +146,40 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 				// Gönderenin UID'sini bul (uid > sessionId > isim sırasıyla)
 				let senderUid = null;
+				let senderSessionId = data.fromSessionId || null;
 				let senderName = data.fromName || "Rakip";
 				for (const sid in this.otherPlayers) {
 					const p = this.otherPlayers[sid];
 					// Önce uid ile eşleştir (en güvenilir)
 					if (data.fromUid && p.uid === data.fromUid) {
 						senderUid = p.uid;
+						senderSessionId = sid;
 						senderName = p.name || senderName;
 						break;
 					}
 					// Sonra sessionId ile eşleştir
 					if (data.fromSessionId && sid === data.fromSessionId) {
-						senderUid = p.uid;
+						senderUid = p.uid || data.fromUid || sid;
+						senderSessionId = sid;
 						senderName = p.name || senderName;
 						break;
 					}
 					// Son çare: isim ile eşleştir (fromName varsa)
 					if (data.fromName && p.name === data.fromName && !senderUid) {
-						senderUid = p.uid;
+						senderUid = p.uid || data.fromUid;
+						senderSessionId = sid;
 					}
 				}
 				if (senderUid) {
 					this._crushReceivedFrom[senderUid] = true;
+					if (senderSessionId) this._crushReceivedFrom[senderSessionId] = true;
 
 					// Yerel kontrol: ben de ona crush atmışsam → anında MUTUAL
-					if (this.crushSentTo[senderUid] && !this.matchedUids[senderUid]) {
+					const sentCheck = this.crushSentTo[senderUid] || (senderSessionId && this.crushSentTo[senderSessionId]);
+					const matchCheck = this.matchedUids[senderUid] || (senderSessionId && this.matchedUids[senderSessionId]);
+					if (sentCheck && !matchCheck) {
 						this.matchedUids[senderUid] = true;
+						if (senderSessionId) this.matchedUids[senderSessionId] = true;
 						this._crushButtonMode = null;
 						this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 						return;
@@ -354,7 +362,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		let senderSessionId = null;
 		for (const sid in this.otherPlayers) {
 			if (this.otherPlayers[sid].name === fromName) {
-				senderUid = this.otherPlayers[sid].uid;
+				senderUid = this.otherPlayers[sid].uid || sid;
 				senderSessionId = sid;
 				break;
 			}
@@ -362,7 +370,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		if (!senderUid) return;
 
 		// Zaten eşleşilmişse tekrar açma
-		if (this.matchedUids && this.matchedUids[senderUid]) return;
+		if (this.matchedUids && (this.matchedUids[senderUid] || this.matchedUids[senderSessionId])) return;
 
 		// Ben ona crush atmış mıyım kontrol et
 		try {
@@ -373,6 +381,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			if (!mySnap.empty) {
 				// Ben de crush atmıştım → MUTUAL!
 				this.matchedUids[senderUid] = true;
+				if (senderSessionId) this.matchedUids[senderSessionId] = true;
 				this._crushButtonMode = null;
 				this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 			}
@@ -392,21 +401,23 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}
 
 		const targetUid = targetSprite.uid;
+		const effectiveTargetId = targetUid || targetSessionId;
 		const myUid = this._getMyUid();
 
-		if (!targetUid || !myUid) {
+		if (!myUid) {
 			this.showInfoNotification("Kimlik bilgileri eksik, işlem yapılamadı.");
 			return;
 		}
 
 		// Zaten eşleşilmişse doğrudan sohbet aç
-		if (this.matchedUids && this.matchedUids[targetUid]) {
-			this.openChatUI(targetUid, targetSprite.name || "Rakip");
+		if (this.matchedUids && (this.matchedUids[effectiveTargetId] || this.matchedUids[targetSessionId])) {
+			this.openChatUI(effectiveTargetId, targetSprite.name || "Rakip");
 			return;
 		}
 
 		// Yerel olarak crush gönderimini kaydet (Firestore'suz mutual tespit için)
-		this.crushSentTo[targetUid] = true;
+		this.crushSentTo[effectiveTargetId] = true;
+		this.crushSentTo[targetSessionId] = true;
 
 		// Colyseus bildirimini ÖNCE gönder (Firestore yavaş olsa bile karşı taraf crush'ı görsün)
 		const myName = this.myData?.name || this.myData?.displayName || this.karakterim?.name || null;
@@ -419,31 +430,37 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		});
 
 		// Yerel kontrol: karşı taraftan zaten crush almışsak → anında MUTUAL
-		if (this._crushReceivedFrom[targetUid]) {
-			this.matchedUids[targetUid] = true;
+		if (this._crushReceivedFrom[effectiveTargetId] || this._crushReceivedFrom[targetSessionId]) {
+			this.matchedUids[effectiveTargetId] = true;
+			this.matchedUids[targetSessionId] = true;
 			this._crushButtonMode = null;
 			this._recreateCrushButton('sohbet');
 			this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 			// Firestore'a yine de yazalım (kalıcılık için)
-			sendCrush(myUid, targetUid).catch(e => console.warn("[CRUSH] Firestore yazma:", e));
+			if (targetUid) sendCrush(myUid, targetUid).catch(e => console.warn("[CRUSH] Firestore yazma:", e));
 			return;
 		}
 
 		// Firestore yoluyla crush gönder
-		try {
-			const result = await sendCrush(myUid, targetUid);
-			const isMatched = result?.status === "mutual";
+		if (targetUid) {
+			try {
+				const result = await sendCrush(myUid, targetUid);
+				const isMatched = result?.status === "mutual";
 
-			if (isMatched) {
-				this.matchedUids[targetUid] = true;
-				this._recreateCrushButton('sohbet');
-				this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
-			} else {
-				this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
+				if (isMatched) {
+					this.matchedUids[effectiveTargetId] = true;
+					this.matchedUids[targetSessionId] = true;
+					this._recreateCrushButton('sohbet');
+					this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
+				} else {
+					this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
+				}
+			} catch (err) {
+				console.error("[CRUSH] HATA:", err);
+				this.showInfoNotification("Crush gönderildi! <3");
 			}
-		} catch (err) {
-			console.error("[CRUSH] HATA:", err);
-			// Firestore başarısız olsa bile crush gönderildi say (Colyseus zaten gönderdi)
+		} else {
+			// targetUid yok (iOS fallback) — Colyseus zaten gönderdi
 			this.showInfoNotification("Crush gönderildi! <3");
 		}
 	}
@@ -566,6 +583,13 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 						getDocs(myCrushesQuery).then(mySnap => {
 							if (!mySnap.empty) {
 								this.matchedUids[senderUid] = true;
+								// SessionId ile de kaydet (iOS uyumluluğu)
+								for (const sessionId in this.otherPlayers) {
+									if (this.otherPlayers[sessionId].uid === senderUid) {
+										this.matchedUids[sessionId] = true;
+										break;
+									}
+								}
 								this._crushButtonMode = null; // force re-evaluate in update()
 								if (Date.now() - window.startupTime < 2000) return;
 								let senderName = "Rakip";
@@ -872,7 +896,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			// Eşleşme durumuna göre buton modunu belirle
 			const targetSprite = this.otherPlayers[this.crushTargetId];
 			const targetUid = targetSprite && targetSprite.uid;
-			const isTargetMatched = targetUid && this.matchedUids && this.matchedUids[targetUid];
+			const isTargetMatched = (targetUid && this.matchedUids && this.matchedUids[targetUid])
+				|| (this.matchedUids && this.matchedUids[this.crushTargetId]);
 			const desiredMode = isTargetMatched ? 'sohbet' : 'crush';
 			if (this._crushButtonMode !== desiredMode || !this.crushButton) {
 				this._recreateCrushButton(desiredMode);
