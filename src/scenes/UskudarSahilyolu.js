@@ -294,20 +294,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			return;
 		}
 
-		// 1. Zaten eşleşmiş mi diye KONTROL ET
-		if (this.matchedUids?.[targetUid]) {
-			// Eşleşme varsa, sohbeti aç/kapat
-			const chatContainer = document.getElementById("chat-ui-container");
-			if (chatContainer?.style.display === "flex") {
-				chatContainer.style.display = "none";
-				window.activeChatTargetUid = null;
-			} else {
-				this.openChatUI(targetUid, targetSprite.name || "Rakip");
-			}
-			return; // İşlem tamam, fonksiyondan çık
-		}
-
-		// 2. Eşleşme YOKSA, crush gönderme işlemini başlat
+		// Crush gönderme işlemini başlat
 		if (this._isSendingCrush) {
 			console.log("[CRUSH] Zaten bir crush gönderiliyor, bekleyin.");
 			this.showInfoNotification("İşlem sürüyor, lütfen bekleyin...");
@@ -768,14 +755,9 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		this.crushTargetId = closestCrushId; // Hedefi her zaman güncelle
 
 		if (this.crushTargetId) {
-			const targetSprite = this.otherPlayers[this.crushTargetId];
-			const targetUid = targetSprite?.uid;
-			const isAlreadyMatched = !!(targetUid && this.matchedUids?.[targetUid]);
-			const wantMode = isAlreadyMatched ? 'sohbet' : 'crush';
-
-			// Buton modu değiştiyse veya buton hiç yoksa yeniden oluştur
-			if (this._crushButtonMode !== wantMode || !this.crushButton) {
-				this._recreateCrushButton(wantMode);
+			// Buton yoksa oluştur (her zaman crush modu)
+			if (this._crushButtonMode !== 'crush' || !this.crushButton) {
+				this._recreateCrushButton('crush');
 			}
 			// Her durumda butonu görünür yap
 			this.crushButton.setVisible(true);
