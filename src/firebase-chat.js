@@ -38,12 +38,10 @@ async function getDb() {
     );
     _db = getFirestore(app);
   }
-  try {
-    await enableNetwork(_db);
-    console.log("Firestore ağ bağlantısı zorla açıldı.");
-  } catch (e) {
-    console.error("Ağ açma hatası:", e);
-  }
+  // enableNetwork'ü bloklamadan ateşle — iOS Capacitor'da takılmasını engelle
+  enableNetwork(_db)
+    .then(() => console.log("Firestore ağ bağlantısı zorla açıldı."))
+    .catch((e) => console.error("Ağ açma hatası:", e));
   return _db;
 }
 

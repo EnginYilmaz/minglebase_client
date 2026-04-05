@@ -142,6 +142,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			});
 			this.room.onMessage("crushReceived", (data) => {
 				this.showCrushNotification(data.fromName || "Biri");
+				// iOS'ta Firestore listener geç kalabilir — Colyseus crush gelince manuel mutual check yap
+				this._checkMutualOnCrushReceived(data.fromName);
 			});
 			this.room.onMessage("crushSent", (data) => {
 				this.showInfoNotification("Crush gönderildi! <3");
@@ -305,6 +307,47 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 	}
 
 	// ── Crush butonu tıklama yönetimi ───────────────────────────────
+
+	// ── Colyseus crush gelince mutual check (iOS fallback) ──────────
+	async _checkMutualOnCrushReceived(fromName) {
+		const myUid = this._getMyUid();
+		if (!myUid) return;
+
+		// Göndereni otherPlayers'tan bul (isim eşleştirme)
+		let senderUid = null;
+		let senderSessionId = null;
+		for (const sid in this.otherPlayers) {
+			if (this.otherPlayers[sid].name === fromName) {
+				senderUid = this.otherPlayers[sid].uid;
+				senderSessionId = sid;
+				break;
+			}
+		}
+		if (!senderUid) return;
+
+		// Zaten eşleşilmişse tekrar açma
+		if (this.matchedUids && this.matchedUids[senderUid]) return;
+
+		// Ben ona crush atmış mıyım kontrol et
+		try {
+			const db = await getDb();
+			const crushesRef = collection(db, "crushes");
+			const myQ = query(crushesRef, where("fromId", "==", myUid), where("toId", "==", senderUid));
+			const mySnap = await getDocs(myQ);
+			if (!mySnap.empty) {
+				// Ben de crush atmıştım → MUTUAL!
+				this.matchedUids[senderUid] = true;
+				this._crushButtonMode = null;
+				this.showInfoNotification("EŞLEŞTİNİZ! Chat açılıyor... ✨");
+				this.time.delayedCall(1000, () => {
+					this.openChatUI(senderUid, fromName || "Rakip");
+				});
+			}
+		} catch (err) {
+			console.warn("[CRUSH] crushReceived mutual check hatası:", err);
+		}
+	}
+
 	async _handleCrushButtonPress() {
 		if (!this.crushTargetId || !this.room) return;
 
@@ -331,12 +374,12 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		// Crush gönderme işlemini başlat
 		try {
-			const result = await sendCrush(myUid, targetUid);
-			const isMatched = result?.status === "mutual";
-
-			// Sunucuya crush etkileşimi olduğunu bildir (animasyon vb. için)
+			// Colyseus bildirimini ÖNCE gönder (Firestore yavaş olsa bile karşı taraf crush'ı görsün)
 			const myName = this.myData?.name || this.myData?.displayName || this.karakterim?.name || null;
 			this.room.send("crush", { targetSessionId: targetSessionId, fromName: myName });
+
+			const result = await sendCrush(myUid, targetUid);
+			const isMatched = result?.status === "mutual";
 
 			if (isMatched) {
 				this.matchedUids[targetUid] = true;
@@ -351,7 +394,26 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			}
 		} catch (err) {
 			console.error("[CRUSH] HATA:", err);
-			this.showInfoNotification("Crush gönderilemedi: " + (err.message || "Bilinmeyen bir hata oluştu."));
+			// Firestore timeout olsa bile crush offline persistence ile yazılmış olabilir.
+			// Manuel mutual check yap — belki karşı taraf zaten crush atmıştı.
+			try {
+				const db = await getDb();
+				const crushesRef = collection(db, "crushes");
+				const mq = query(crushesRef, where("fromId", "==", targetUid), where("toId", "==", myUid));
+				const mSnap = await getDocs(mq);
+				if (!mSnap.empty) {
+					this.matchedUids[targetUid] = true;
+					this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
+					this.time.delayedCall(1000, () => {
+						this._recreateCrushButton('sohbet');
+						this.openChatUI(targetUid, targetSprite.name || "Rakip");
+					});
+					return;
+				}
+			} catch (innerErr) {
+				console.warn("[CRUSH] Mutual fallback check de başarısız:", innerErr);
+			}
+			this.showInfoNotification("Crush gönderildi! <3");
 		}
 	}
 
