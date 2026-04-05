@@ -349,8 +349,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 					}
 				} else {
 					this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
-					if (this.crushButton) this.crushButton.setVisible(false);
-					this.crushTargetId = null;
+					this.crushTargetId = null; // Hedefi temizle ki update döngüsü butonu gizlesin
 				}
 			} catch (err) {
 				console.error("[CRUSH] HATA:", err, err.message, err.stack);
