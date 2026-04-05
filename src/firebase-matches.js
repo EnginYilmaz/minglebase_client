@@ -15,13 +15,11 @@ function getDb() {
     try {
         _db = initializeFirestore(app, {
             experimentalForceLongPolling: true,
+            useFetchStreams: false,
         });
     } catch (e) {
-        if (e.code === 'failed-precondition') {
-            _db = getFirestore(app);
-        } else {
-            console.error("Firestore initialization error:", e);
-        }
+        console.warn("initializeFirestore already called, falling back to getFirestore:", e.message);
+        _db = getFirestore(app);
     }
     
     return _db;
