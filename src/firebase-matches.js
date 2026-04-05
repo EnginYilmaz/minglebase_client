@@ -1,32 +1,10 @@
-import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { 
-  getFirestore, initializeFirestore, collection, query, where, getDocs 
+  collection, query, where, getDocs 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { firebaseConfig } from "./firebase-config.js";
-
-let _db = null;
-function getDb() {
-    if (_db) return _db;
-
-    const app = getApps().length === 0 
-        ? initializeApp(firebaseConfig) 
-        : getApp();
-
-    try {
-        _db = initializeFirestore(app, {
-            experimentalForceLongPolling: true,
-            useFetchStreams: false,
-        });
-    } catch (e) {
-        console.warn("initializeFirestore already called, falling back to getFirestore:", e.message);
-        _db = getFirestore(app);
-    }
-    
-    return _db;
-}
+import { getDb } from "./firebase-chat.js";
 
 export async function getMutualMatches(myUid) {
-  const db = getDb();
+  const db = await getDb();
   const crushesRef = collection(db, "crushes");
   
   // Who I crushed
