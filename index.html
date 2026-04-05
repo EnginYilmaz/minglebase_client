@@ -1,23 +1,25 @@
-<!-- index.html içine -->
-<button id="testButton">Firestore'a Yazmayı Dene</button>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-  import { firebaseConfig } from './firebase-config.js'; // Bu dosyanın var olduğundan emin olun
+<!DOCTYPE html>
+<html>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+	<title>MingleBase</title>
+	<style>
+		body {
+			margin: 0;
+			padding: 0;
+			background-color: #000;
+		}
+	</style>
+</head>
 
-  document.getElementById('testButton').onclick = async () => {
-    try {
-      console.log("Firestore'a yazma denemesi...");
-      alert("Firestore'a yazma denemesi...");
-      await setDoc(doc(db, "testCollection", "testDoc"), { time: new Date() });
-      console.log("BAŞARILI!");
-      alert("BAŞARILI!");
-    } catch (error) {
-      console.error("HATA:", error);
-      alert("HATA: " + error.message);
+<body>
+	<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+	<script type="module" src="src/main.js"></script>
+</body>
+
+</html>
     }
   };
 </script>
