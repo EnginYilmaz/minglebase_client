@@ -310,10 +310,12 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		// 2. Eşleşme YOKSA, crush gönderme işlemini başlat
 		if (this._isSendingCrush) {
 			console.log("[CRUSH] Zaten bir crush gönderiliyor, bekleyin.");
+			this.showInfoNotification("İşlem sürüyor, lütfen bekleyin...");
 			return;
 		}
 
 		this._isSendingCrush = true;
+
 		try {
 			const result = await sendCrush(myUid, targetUid);
 			const isMatched = result?.status === "mutual";
@@ -334,12 +336,12 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 				});
 			} else {
 				this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
-				// Butonun tekrar 'crush' modunda kalmasını sağla, hedefi temizleme
 			}
 		} catch (err) {
 			console.error("[CRUSH] HATA:", err);
 			this.showInfoNotification("Crush gönderilemedi: " + (err.message || "Bilinmeyen bir hata oluştu."));
 		} finally {
+			// Hata olsa da olmasa da bayrağı sıfırla
 			this._isSendingCrush = false;
 		}
 	}
