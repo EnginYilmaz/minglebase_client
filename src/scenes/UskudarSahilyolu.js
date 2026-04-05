@@ -206,7 +206,26 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 				});
 			});
 		} else {
-			console.log("[BADGE] Native platform, Firebase Auth Web SDK atlanıyor");
+			console.log("[BADGE] Native platform, Capacitor FirebaseAuthentication kullanılıyor");
+			try {
+				const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
+				if (FirebaseAuthentication) {
+					const result = await FirebaseAuthentication.getCurrentUser();
+					const nativeUser = result?.user;
+					if (nativeUser && nativeUser.uid) {
+						console.log("[BADGE] Native Firebase uid alındı:", nativeUser.uid);
+						this._firebaseUid = nativeUser.uid;
+						if (nativeUser.uid !== roomUid) {
+							console.log("[BADGE] Native uid farklı, yeniden initMatchSystem:", nativeUser.uid);
+							this.initMatchSystem(nativeUser.uid);
+						}
+					} else {
+						console.warn("[BADGE] Native FirebaseAuthentication: kullanıcı yok (guest?)");
+					}
+				}
+			} catch (e) {
+				console.warn("[BADGE] Native FirebaseAuthentication hatası:", e);
+			}
 		}
 
 		// ── Crush butonu (başlangıçta gizli) ──
@@ -287,7 +306,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}
 
 		const targetUid = targetSprite.uid;
-		const myUid = this.myData?.uid || this.myData?.odaUid;
+		const myUid = this._firebaseUid || this.myData?.uid || this.myData?.odaUid;
 
 		if (!targetUid || !myUid) {
 			this.showInfoNotification("Kimlik bilgileri eksik, işlem yapılamadı.");
