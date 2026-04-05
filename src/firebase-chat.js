@@ -19,12 +19,26 @@ import { firebaseConfig } from "./firebase-config.js";
 let _db = null;
 function getDb() {
     if (_db) return _db;
-    const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
+
+    const app = getApps().length === 0 
+        ? initializeApp(firebaseConfig) 
+        : getApp();
+
+    // Firestore'u, özellikle kısıtlı ağ ortamları için daha sağlam olan
+    // long-polling yöntemiyle başlatmayı dene. Bu, iOS'taki ağ sorunlarını
+    // çözmede genellikle kritik bir adımdır.
     try {
-        _db = initializeFirestore(app, { experimentalForceLongPolling: true });
-    } catch (_e) {
+        _db = initializeFirestore(app, {
+            experimentalForceLongPolling: true,
+            useFetchStreams: false, // Bazı mobil tarayıcılar ve WebView'lar için uyumluluğu artırır
+        });
+    } catch (e) {
+        // Eğer initializeFirestore daha önce çağrıldıysa veya hata verirse,
+        // mevcut Firestore instance'ını al.
+        console.warn("initializeFirestore hatası, getFirestore() kullanılıyor:", e.message);
         _db = getFirestore(app);
     }
+    
     return _db;
 }
 
