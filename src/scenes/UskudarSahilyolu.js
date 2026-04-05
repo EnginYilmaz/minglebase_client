@@ -319,7 +319,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			const isMatched = result?.status === "mutual";
 
 			// Sunucuya crush etkileşimi olduğunu bildir (animasyon vb. için)
-			this.room.send("crush", { targetSessionId: targetSessionId });
+			const myName = this.myData?.name || this.myData?.displayName || this.karakterim?.name || null;
+			this.room.send("crush", { targetSessionId: targetSessionId, fromName: myName });
 
 			if (isMatched) {
 				this.matchedUids[targetUid] = true;

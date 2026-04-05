@@ -107,9 +107,11 @@ async handleGoogleLogin() {
         this.statusText.setText("Apple ile bağlanılıyor...");
         try {
             const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
-            await FirebaseAuthentication.signInWithApple();
+            const result = await FirebaseAuthentication.signInWithApple();
+            const user = result?.user;
+            const displayName = user?.displayName || user?.email || null;
             const { token } = await FirebaseAuthentication.getIdToken();
-            this.scene.start("Waiting", { token });
+            this.scene.start("Waiting", { token, displayName });
         } catch (err) {
             this.statusText.setText("Apple hatası: " + err.message);
         }

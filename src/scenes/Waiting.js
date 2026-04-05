@@ -17,6 +17,7 @@ export default class Waiting extends Phaser.Scene {
     init(data) {
         // Login sahnesinden gelen token
         this.authToken = data && data.token !== undefined ? data.token : null;
+        this.displayName = data && data.displayName ? data.displayName : null;
         this.transitioned = false;
     }
 
@@ -64,6 +65,7 @@ export default class Waiting extends Phaser.Scene {
         try {
             const client = new Client(SERVER_URL);
             const options = this.authToken ? { token: this.authToken } : {};
+            if (this.displayName) options.displayName = this.displayName;
             this.room = await client.joinOrCreate("my_room", options);
 
             // Sunucu kendi spawn verimizi bildirir (onJoin'de gönderilir)
