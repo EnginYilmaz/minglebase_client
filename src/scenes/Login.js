@@ -1,10 +1,37 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+    getAuth, initializeAuth, indexedDBLocalPersistence,
+    GoogleAuthProvider, OAuthProvider,
+    signInWithPopup, signInWithCredential
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { firebaseConfig } from "../firebase-config.js";
+
+let _auth = null;
 
 function ensureFirebase() {
     const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    return getAuth(app);
+    if (_auth) return _auth;
+
+    const isNative = window.Capacitor && window.Capacitor.getPlatform() !== 'web';
+
+    if (isNative) {
+        // iOS: getAuth() kullanma — initializeAuth ile persistence ayarla
+        _auth = initializeAuth(app, {
+            persistence: indexedDBLocalPersistence
+        });
+        // Firestore'u long-polling modunda zorla başlat
+        try {
+            initializeFirestore(app, {
+                experimentalForceLongPolling: true,
+                useFetchStreams: false,
+            });
+        } catch (e) { /* zaten başlatılmış */ }
+    } else {
+        _auth = getAuth(app);
+    }
+
+    return _auth;
 }
 
 function getPlatform() {
@@ -110,6 +137,17 @@ async handleGoogleLogin() {
             const result = await FirebaseAuthentication.signInWithApple();
             const user = result?.user;
             const displayName = user?.displayName || user?.email || null;
+
+            // Native auth → initializeAuth'a sync et (Firestore yetkilendirme için)
+            const auth = ensureFirebase();
+            const idToken = result.credential?.idToken;
+            const rawNonce = result.credential?.nonce;
+            if (idToken) {
+                const provider = new OAuthProvider('apple.com');
+                const credential = provider.credential({ idToken, rawNonce });
+                await signInWithCredential(auth, credential);
+            }
+
             const { token } = await FirebaseAuthentication.getIdToken();
             this.scene.start("Waiting", { token, displayName });
         } catch (err) {
