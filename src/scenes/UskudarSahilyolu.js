@@ -90,6 +90,14 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 	_isSendingCrush = false;
 	sevgiGosteriyor = false;
 
+	// ── Tutarlı UID çözümleme (guest dahil) ──
+	_getMyUid() {
+		return this._firebaseUid
+			|| (this.myData && (this.myData.uid || this.myData.odaUid))
+			|| (this.room && this.room.sessionId)
+			|| null;
+	}
+
 	init(data) {
 		this.room = (data && data.room) ? data.room : null;
 		this.myData = (data && data.me) ? data.me : null;
@@ -180,7 +188,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		this.setupChatUI();
 
 		// Room uid'den eşleşme sistemini başlat (tüm platformlarda çalışır)
-		const roomUid = this.myData && (this.myData.uid || this.myData.odaUid);
+		const roomUid = this._getMyUid();
 		console.log("[BADGE] roomUid:", roomUid, "myData keys:", this.myData ? Object.keys(this.myData) : "null");
 		if (roomUid) {
 			this.initMatchSystem(roomUid);
@@ -207,25 +215,27 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			});
 		} else {
 			console.log("[BADGE] Native platform, Capacitor FirebaseAuthentication kullanılıyor");
-			try {
-				const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
-				if (FirebaseAuthentication) {
-					const result = FirebaseAuthentication.getCurrentUser();
-					const nativeUser = result?.user;
-					if (nativeUser && nativeUser.uid) {
-						console.log("[BADGE] Native Firebase uid alındı:", nativeUser.uid);
-						this._firebaseUid = nativeUser.uid;
-						if (nativeUser.uid !== roomUid) {
-							console.log("[BADGE] Native uid farklı, yeniden initMatchSystem:", nativeUser.uid);
-							this.initMatchSystem(nativeUser.uid);
+			(async () => {
+				try {
+					const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
+					if (FirebaseAuthentication) {
+						const result = await FirebaseAuthentication.getCurrentUser();
+						const nativeUser = result?.user;
+						if (nativeUser && nativeUser.uid) {
+							console.log("[BADGE] Native Firebase uid alındı:", nativeUser.uid);
+							this._firebaseUid = nativeUser.uid;
+							if (nativeUser.uid !== roomUid) {
+								console.log("[BADGE] Native uid farklı, yeniden initMatchSystem:", nativeUser.uid);
+								this.initMatchSystem(nativeUser.uid);
+							}
+						} else {
+							console.warn("[BADGE] Native FirebaseAuthentication: kullanıcı yok (guest?)");
 						}
-					} else {
-						console.warn("[BADGE] Native FirebaseAuthentication: kullanıcı yok (guest?)");
 					}
+				} catch (e) {
+					console.warn("[BADGE] Native FirebaseAuthentication hatası:", e);
 				}
-			} catch (e) {
-				console.warn("[BADGE] Native FirebaseAuthentication hatası:", e);
-			}
+			})();
 		}
 
 		// ── Crush butonu (başlangıçta gizli) ──
@@ -306,7 +316,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}
 
 		const targetUid = targetSprite.uid;
-		const myUid = this._firebaseUid || this.myData?.uid || this.myData?.odaUid;
+		const myUid = this._getMyUid();
 
 		if (!targetUid || !myUid) {
 			this.showInfoNotification("Kimlik bilgileri eksik, işlem yapılamadı.");
@@ -500,7 +510,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		const handleSend = () => {
 			const text = inputField.value.trim();
-			const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
+			const myUid = this._getMyUid();
 			if (text && window.activeChatTargetUid && myUid) {
 				sendSimsMessage(myUid, window.activeChatTargetUid, text);
 				inputField.value = "";
@@ -516,7 +526,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 	openChatUI(targetUid, targetName) {
 		const chatContainer = document.getElementById("chat-ui-container");
 		const chatMessages = document.getElementById("chat-messages");
-		const myUid = this.myData && (this.myData.uid || this.myData.odaUid);
+		const myUid = this._getMyUid();
 		if (chatContainer && myUid) {
 			// Sohbet açılınca badge'i sıfırla
 			window.unreadMessageCount = 0;
