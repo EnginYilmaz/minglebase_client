@@ -28,7 +28,7 @@ async function getDb() {
 
   try {
     _db = initializeFirestore(app, {
-      //experimentalForceLongPolling: true,
+      experimentalForceLongPolling: true,
       useFetchStreams: false,
     });
   } catch (e) {
@@ -86,116 +86,71 @@ function sendCrushNative(fromId, toId) {
   });
 }
 
-export async function sendCrush(fromId, toId) {
-  console.log(`[sendCrush] Başladı: from=${fromId}, to=${toId}`);
+// Kilit değişkenini dosya seviyesinde tutalım
+let isProcessingCrush = false;
 
+export async function sendCrush(fromId, toId) {
+  // 1. GÜVENLİK KONTROLLERİ
+  if (isProcessingCrush) {
+    console.warn("[sendCrush] Zaten bir işlem sürüyor, sakin ol aşkım.");
+    return { status: "processing" };
+  }
+  
   if (fromId === toId) {
-    console.warn("[sendCrush] Kullanıcı kendine crush atamaz.");
     return { status: "self_crush_not_allowed" };
   }
 
-  // iOS native ise native SDK üzerinden gönder
-  if (isIOSNative()) {
-    console.log("[sendCrush] iOS native bridge kullanılıyor.");
-    try {
-      const result = await sendCrushNative(fromId, toId);
-      console.log("[sendCrush] iOS native sonuç:", result);
-      return result;
-    } catch (error) {
-      console.error("[sendCrush] iOS native hata:", error.message);
-      throw error;
-    } finally {
-      window.isSendingCrush = false;
-    }
-  }
+  console.log(`[sendCrush] İşlem başlıyor: ${fromId} -> ${toId}`);
+  isProcessingCrush = true; // KİLİDİ KAPAT
 
-  // Web / Android: JS SDK kullan
-  console.log("[sendCrush] JS SDK kullanılıyor.");
-  const db = await getDb();
-  const crushesRef = collection(db, "crushes");
-
-  // Zaman aşımı için bir Promise oluştur
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(
-      () =>
-        reject(
-          new Error(
-            "İstek zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.",
-          ),
-        ),
-      10000,
-    ); // 10 saniye
-  });
-
-  // Gerçek Firestore işlemi için bir Promise oluştur
-  const firestorePromise = (async () => {
-    const crushQuery = query(
-      crushesRef,
-      where("fromId", "==", fromId),
-      where("toId", "==", toId),
-    );
-
-    console.log("[sendCrush] Mevcut crush sorgulanıyor...");
-    const querySnapshot = await getDocs(crushQuery);
-    console.log(
-      `[sendCrush] Mevcut crush sorgulandı, ${querySnapshot.empty ? "boş" : "dolu"}.`,
-    );
-
-    if (querySnapshot.empty) {
-      console.log("[sendCrush] Yeni crush ekleniyor...");
-      await addDoc(crushesRef, {
-        fromId: fromId,
-        toId: toId,
-        timestamp: serverTimestamp(),
-      });
-      console.log("[sendCrush] Yeni crush eklendi.");
-
-      const mutualCrushQuery = query(
-        crushesRef,
-        where("fromId", "==", toId),
-        where("toId", "==", fromId),
-      );
-      console.log("[sendCrush] Karşılıklı crush sorgulanıyor...");
-      const mutualCrushSnapshot = await getDocs(mutualCrushQuery);
-      console.log(
-        `[sendCrush] Karşılıklı crush sorgulandı, ${mutualCrushSnapshot.empty ? "boş" : "dolu"}.`,
-      );
-
-      if (!mutualCrushSnapshot.empty) {
-        return { status: "mutual" };
-      } else {
-        return { status: "sent" };
-      }
-    } else {
-      console.log(
-        "[sendCrush] Crush zaten gönderilmiş. Karşılık kontrol ediliyor...",
-      );
-      const mutualCrushQuery = query(
-        crushesRef,
-        where("fromId", "==", toId),
-        where("toId", "==", fromId),
-      );
-      const mutualCrushSnapshot = await getDocs(mutualCrushQuery);
-      console.log(
-        `[sendCrush] Karşılık sorgulandı, ${mutualCrushSnapshot.empty ? "boş" : "dolu"}.`,
-      );
-      if (!mutualCrushSnapshot.empty) {
-        return { status: "mutual" };
-      }
-      return { status: "already_sent" };
-    }
-  })();
-
-  // İki Promise'i yarışa sok
   try {
-    const result = await Promise.race([firestorePromise, timeoutPromise]);
-    console.log("[sendCrush] İşlem başarıyla tamamlandı:", result);
+    const db = await getDb();
+    const crushesRef = collection(db, "crushes");
+
+    // 2. ZAMAN AŞIMI KONTROLÜ (15 Saniye)
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Firestore bağlantısı zaman aşımına uğradı.")), 15000)
+    );
+
+    // 3. ASIL FİRESTORE İŞLEMİ
+    const firestoreWork = (async () => {
+      // Önce daha önce atılmış mı bak (Query)
+      const q = query(crushesRef, where("fromId", "==", fromId), where("toId", "==", toId));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        // Yeni Crush ekle
+        await addDoc(crushesRef, {
+          fromId: fromId,
+          toId: toId,
+          timestamp: serverTimestamp()
+        });
+        console.log("[sendCrush] Yeni belge oluşturuldu.");
+
+        // Karşılıklı mı bak (Match kontrolü)
+        const mq = query(crushesRef, where("fromId", "==", toId), where("toId", "==", fromId));
+        const mSnap = await getDocs(mq);
+        
+        return !mSnap.empty ? { status: "mutual" } : { status: "sent" };
+      } else {
+        // Zaten varmış, karşılık gelmiş mi ona bak
+        const mq = query(crushesRef, where("fromId", "==", toId), where("toId", "==", fromId));
+        const mSnap = await getDocs(mq);
+        return !mSnap.empty ? { status: "mutual" } : { status: "already_sent" };
+      }
+    })();
+
+    // Yarıştır bakalım!
+    const result = await Promise.race([firestoreWork, timeoutPromise]);
     return result;
+
   } catch (error) {
-    console.error("[sendCrush] Hata yakalandı:", error.message);
+    console.error("[sendCrush] KRİTİK HATA:", error.message);
     throw error;
   } finally {
-    window.isSendingCrush = false;
+    // NE OLURSA OLSUN KİLİDİ AÇ (Yoksa uygulama bir daha crush atamaz)
+    isProcessingCrush = false;
+    console.log("[sendCrush] İşlem bitti, kilit açıldı.");
   }
 }
 
