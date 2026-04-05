@@ -721,6 +721,20 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		const inputField = document.getElementById("chat-input");
 		if (!chatContainer) return;
 
+		// iOS'ta sohbet ekranını küçült ve taşmayı engelle
+		const isIOS = window.Capacitor && window.Capacitor.getPlatform() === 'ios';
+		if (isIOS) {
+			chatContainer.style.width = "220px";
+			chatContainer.style.height = "260px";
+			chatContainer.style.right = "8px";
+			chatContainer.style.bottom = "8px";
+			chatContainer.style.maxWidth = "calc(100vw - 16px)";
+			chatContainer.style.maxHeight = "calc(100vh - 16px)";
+			chatContainer.style.padding = "6px";
+			chatContainer.style.fontSize = "12px";
+			chatContainer.style.boxSizing = "border-box";
+		}
+
 		closeBtn.onclick = () => {
 			chatContainer.style.display = "none";
 			window.activeChatTargetUid = null;
