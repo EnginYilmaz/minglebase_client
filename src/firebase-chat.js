@@ -54,15 +54,65 @@ async function getDb() {
  * @returns {Promise<boolean>} - Returns true if mutual, false if one-way.
  */
 export { getDb };
+
+function isIOSNative() {
+  return window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.sendCrush;
+}
+
+function sendCrushNative(fromId, toId) {
+  return new Promise((resolve, reject) => {
+    const callbackId = "crushCb_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+
+    const timeout = setTimeout(() => {
+      delete window[callbackId];
+      reject(new Error("iOS native crush isteği zaman aşımına uğradı."));
+    }, 15000);
+
+    window[callbackId] = (result) => {
+      clearTimeout(timeout);
+      delete window[callbackId];
+      if (result.error) {
+        reject(new Error(result.error));
+      } else {
+        resolve({ status: result.status });
+      }
+    };
+
+    window.webkit.messageHandlers.sendCrush.postMessage({
+      fromId: fromId,
+      toId: toId,
+      callbackId: callbackId
+    });
+  });
+}
+
 export async function sendCrush(fromId, toId) {
   console.log(`[sendCrush] Başladı: from=${fromId}, to=${toId}`);
-  const db = await getDb();
-  const crushesRef = collection(db, "crushes");
 
   if (fromId === toId) {
     console.warn("[sendCrush] Kullanıcı kendine crush atamaz.");
     return { status: "self_crush_not_allowed" };
   }
+
+  // iOS native ise native SDK üzerinden gönder
+  if (isIOSNative()) {
+    console.log("[sendCrush] iOS native bridge kullanılıyor.");
+    try {
+      const result = await sendCrushNative(fromId, toId);
+      console.log("[sendCrush] iOS native sonuç:", result);
+      return result;
+    } catch (error) {
+      console.error("[sendCrush] iOS native hata:", error.message);
+      throw error;
+    } finally {
+      window.isSendingCrush = false;
+    }
+  }
+
+  // Web / Android: JS SDK kullan
+  console.log("[sendCrush] JS SDK kullanılıyor.");
+  const db = await getDb();
+  const crushesRef = collection(db, "crushes");
 
   // Zaman aşımı için bir Promise oluştur
   const timeoutPromise = new Promise((_, reject) => {
