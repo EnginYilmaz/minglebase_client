@@ -36,61 +36,80 @@ function getDb() {
  */
 export { getDb };
 export async function sendCrush(fromId, toId) {
+  console.log(`[sendCrush] Başladı: from=${fromId}, to=${toId}`);
   const db = getDb();
   const crushesRef = collection(db, "crushes");
 
-  // Prevent users from crushing themselves
   if (fromId === toId) {
-    console.warn("User tried to crush themselves.");
+    console.warn("[sendCrush] Kullanıcı kendine crush atamaz.");
     return { status: "self_crush_not_allowed" };
   }
 
-  const crushQuery = query(
-    crushesRef,
-    where("fromId", "==", fromId),
-    where("toId", "==", toId)
-  );
+  // Zaman aşımı için bir Promise oluştur
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("İstek zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edin.")), 10000); // 10 saniye
+  });
 
-  try {
+  // Gerçek Firestore işlemi için bir Promise oluştur
+  const firestorePromise = (async () => {
+    const crushQuery = query(
+      crushesRef,
+      where("fromId", "==", fromId),
+      where("toId", "==", toId)
+    );
+
+    console.log("[sendCrush] Mevcut crush sorgulanıyor...");
     const querySnapshot = await getDocs(crushQuery);
+    console.log(`[sendCrush] Mevcut crush sorgulandı, ${querySnapshot.empty ? 'boş' : 'dolu'}.`);
 
     if (querySnapshot.empty) {
-      // No existing crush, so create one
+      console.log("[sendCrush] Yeni crush ekleniyor...");
       await addDoc(crushesRef, {
         fromId: fromId,
         toId: toId,
         timestamp: serverTimestamp(),
       });
+      console.log("[sendCrush] Yeni crush eklendi.");
 
-      // Now, check if the other person has already crushed back
       const mutualCrushQuery = query(
         crushesRef,
         where("fromId", "==", toId),
         where("toId", "==", fromId)
       );
+      console.log("[sendCrush] Karşılıklı crush sorgulanıyor...");
       const mutualCrushSnapshot = await getDocs(mutualCrushQuery);
+      console.log(`[sendCrush] Karşılıklı crush sorgulandı, ${mutualCrushSnapshot.empty ? 'boş' : 'dolu'}.`);
 
       if (!mutualCrushSnapshot.empty) {
-        return { status: "mutual" }; // It's a match!
+        return { status: "mutual" };
       } else {
-        return { status: "sent" }; // Crush sent, but not yet mutual
+        return { status: "sent" };
       }
     } else {
-      // Crush already sent — still check if they crushed back
+      console.log("[sendCrush] Crush zaten gönderilmiş. Karşılık kontrol ediliyor...");
       const mutualCrushQuery = query(
         crushesRef,
         where("fromId", "==", toId),
         where("toId", "==", fromId)
       );
       const mutualCrushSnapshot = await getDocs(mutualCrushQuery);
+      console.log(`[sendCrush] Karşılık sorgulandı, ${mutualCrushSnapshot.empty ? 'boş' : 'dolu'}.`);
       if (!mutualCrushSnapshot.empty) {
         return { status: "mutual" };
       }
       return { status: "already_sent" };
     }
+  })();
+
+  // İki Promise'i yarışa sok
+  try {
+    const result = await Promise.race([firestorePromise, timeoutPromise]);
+    console.log("[sendCrush] İşlem başarıyla tamamlandı:", result);
+    return result;
   } catch (error) {
-    console.error("Error sending crush:", error);
-    throw error; // Re-throw the error to be handled by the caller
+    console.error("[sendCrush] Hata yakalandı:", error.message);
+    // Hata mesajını yeniden fırlat ki çağıran fonksiyon yakalayabilsin
+    throw error;
   }
 }
 
