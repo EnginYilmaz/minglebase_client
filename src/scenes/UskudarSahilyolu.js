@@ -144,26 +144,40 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			this.room.onMessage("crushReceived", (data) => {
 				this.showCrushNotification(data.fromName || "Biri");
 
-				// Gönderenin UID'sini bul (Colyseus -> yerel takip)
+				// Gönderenin UID'sini bul (uid > sessionId > isim sırasıyla)
 				let senderUid = null;
+				let senderName = data.fromName || "Rakip";
 				for (const sid in this.otherPlayers) {
-					if (this.otherPlayers[sid].name === data.fromName) {
-						senderUid = this.otherPlayers[sid].uid;
+					const p = this.otherPlayers[sid];
+					// Önce uid ile eşleştir (en güvenilir)
+					if (data.fromUid && p.uid === data.fromUid) {
+						senderUid = p.uid;
+						senderName = p.name || senderName;
 						break;
+					}
+					// Sonra sessionId ile eşleştir
+					if (data.fromSessionId && sid === data.fromSessionId) {
+						senderUid = p.uid;
+						senderName = p.name || senderName;
+						break;
+					}
+					// Son çare: isim ile eşleştir (fromName varsa)
+					if (data.fromName && p.name === data.fromName && !senderUid) {
+						senderUid = p.uid;
 					}
 				}
 				if (senderUid) {
 					this._crushReceivedFrom[senderUid] = true;
 
-					// Yerel kontrol: ben de ona crush atmışsam → anında MUTUAL (Firestore'a gerek yok)
+					// Yerel kontrol: ben de ona crush atmışsam → anında MUTUAL
 					if (this.crushSentTo[senderUid] && !this.matchedUids[senderUid]) {
 						this.matchedUids[senderUid] = true;
 						this._crushButtonMode = null;
 						this.showInfoNotification("EŞLEŞTİNİZ! Chat açılıyor... ✨");
 						this.time.delayedCall(1000, () => {
-							this.openChatUI(senderUid, data.fromName || "Rakip");
+							this.openChatUI(senderUid, senderName);
 						});
-						return; // Firestore fallback'e gerek yok
+						return;
 					}
 				}
 
@@ -402,7 +416,13 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		// Colyseus bildirimini ÖNCE gönder (Firestore yavaş olsa bile karşı taraf crush'ı görsün)
 		const myName = this.myData?.name || this.myData?.displayName || this.karakterim?.name || null;
-		this.room.send("crush", { targetSessionId: targetSessionId, fromName: myName });
+		const mySessionId = this.room.sessionId;
+		this.room.send("crush", {
+			targetSessionId: targetSessionId,
+			fromName: myName,
+			fromUid: myUid,
+			fromSessionId: mySessionId
+		});
 
 		// Yerel kontrol: karşı taraftan zaten crush almışsak → anında MUTUAL
 		if (this._crushReceivedFrom[targetUid]) {
