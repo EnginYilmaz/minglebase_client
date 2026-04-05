@@ -422,7 +422,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}
 
 		// ── Bağımsız gelen mesaj dinleyicisi (badge için) ──
-		const db = getDb();
+		const db = await getDb();
 		const msgRef = collection(db, "messages");
 		const incomingQuery = query(msgRef, where("receiverId", "==", uid));
 		this._lastIncomingCount = null;
