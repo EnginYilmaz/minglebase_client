@@ -210,7 +210,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			try {
 				const FirebaseAuthentication = window.Capacitor?.Plugins?.FirebaseAuthentication;
 				if (FirebaseAuthentication) {
-					const result = await FirebaseAuthentication.getCurrentUser();
+					const result = FirebaseAuthentication.getCurrentUser();
 					const nativeUser = result?.user;
 					if (nativeUser && nativeUser.uid) {
 						console.log("[BADGE] Native Firebase uid alındı:", nativeUser.uid);
