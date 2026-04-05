@@ -173,10 +173,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 					if (this.crushSentTo[senderUid] && !this.matchedUids[senderUid]) {
 						this.matchedUids[senderUid] = true;
 						this._crushButtonMode = null;
-						this.showInfoNotification("EŞLEŞTİNİZ! Chat açılıyor... ✨");
-						this.time.delayedCall(1000, () => {
-							this.openChatUI(senderUid, senderName);
-						});
+						this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 						return;
 					}
 				}
@@ -377,10 +374,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 				// Ben de crush atmıştım → MUTUAL!
 				this.matchedUids[senderUid] = true;
 				this._crushButtonMode = null;
-				this.showInfoNotification("EŞLEŞTİNİZ! Chat açılıyor... ✨");
-				this.time.delayedCall(1000, () => {
-					this.openChatUI(senderUid, fromName || "Rakip");
-				});
+				this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 			}
 		} catch (err) {
 			console.warn("[CRUSH] crushReceived mutual check hatası:", err);
@@ -428,11 +422,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		if (this._crushReceivedFrom[targetUid]) {
 			this.matchedUids[targetUid] = true;
 			this._crushButtonMode = null;
-			this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
-			this.time.delayedCall(1000, () => {
-				this._recreateCrushButton('sohbet');
-				this.openChatUI(targetUid, targetSprite.name || "Rakip");
-			});
+			this._recreateCrushButton('sohbet');
+			this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 			// Firestore'a yine de yazalım (kalıcılık için)
 			sendCrush(myUid, targetUid).catch(e => console.warn("[CRUSH] Firestore yazma:", e));
 			return;
@@ -445,11 +436,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 			if (isMatched) {
 				this.matchedUids[targetUid] = true;
-				this.showInfoNotification("EŞLEŞTİNİZ! Mesajlaşma paneli açılıyor... ✨");
-				this.time.delayedCall(1000, () => {
-					this._recreateCrushButton('sohbet');
-					this.openChatUI(targetUid, targetSprite.name || "Rakip");
-				});
+				this._recreateCrushButton('sohbet');
+				this.showInfoNotification("EŞLEŞTİNİZ! Sohbet butonuna bas ✨");
 			} else {
 				this.showInfoNotification("Crush gönderildi! Karşılık bekleniyor... <3");
 			}
@@ -589,8 +577,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 								}
 								const chatContainer = document.getElementById("chat-ui-container");
 								if (chatContainer && chatContainer.style.display !== "flex") {
-									this.showInfoNotification("Biriyle eşleştin! Chat açılıyor... ✨");
-									this.openChatUI(senderUid, senderName);
+									this.showInfoNotification("Biriyle eşleştin! Sohbet butonuna bas ✨");
 								}
 							}
 						});
