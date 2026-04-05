@@ -542,6 +542,24 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			const totalIncoming = snapshot.size;
 			this._currentIncomingTotal = totalIncoming;
 			console.log("[BADGE] snapshot geldi, totalIncoming:", totalIncoming, "lastCount:", this._lastIncomingCount);
+
+			// Mesaj gönderen herkesi eşleşmiş say (mesaj varsa mutual kesin)
+			snapshot.forEach((doc) => {
+				const msgData = doc.data();
+				if (msgData.senderId && !this.matchedUids[msgData.senderId]) {
+					this.matchedUids[msgData.senderId] = true;
+					// SessionId ile de kaydet (iOS uyumluluğu)
+					for (const sid in this.otherPlayers) {
+						if (this.otherPlayers[sid].uid === msgData.senderId) {
+							this.matchedUids[sid] = true;
+							break;
+						}
+					}
+					this._crushButtonMode = null; // force re-evaluate in update()
+					console.log("[BADGE] Mesajdan eşleşme tespit edildi, senderId:", msgData.senderId);
+				}
+			});
+
 			// İlk yüklenmede mevcut mesaj sayısını kaydet (bunlar zaten okunmuş)
 			if (this._lastIncomingCount === null) {
 				this._lastIncomingCount = totalIncoming;
