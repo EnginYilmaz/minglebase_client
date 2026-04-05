@@ -146,6 +146,23 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		return false;
 	}
 
+	// Verilen ID'yi Firebase uid'ye çözümle (sessionId ise _idMap'ten dön)
+	_resolveFirebaseUid(id) {
+		if (!id) return null;
+		// otherPlayers'daki uid'leri kontrol et
+		const player = this.otherPlayers?.[id];
+		if (player?.uid) return player.uid;
+		// _idMap'te eşleşme var mı
+		if (this._idMap[id]) {
+			// Eşleşen değerin de gerçek uid olup olmadığını kontrol et
+			const mapped = this._idMap[id];
+			const mappedPlayer = this.otherPlayers?.[mapped];
+			if (mappedPlayer?.uid) return mappedPlayer.uid;
+			return mapped;
+		}
+		return id;
+	}
+
 	// ── Tutarlı UID çözümleme (guest dahil) ──
 	_getMyUid() {
 		return this._firebaseUid
@@ -457,7 +474,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		}
 
 		const targetUid = targetSprite.uid;
-		const myUid = this._getMyUid();
+		const myUid = this._firebaseUid || this._getMyUid();
 
 		if (!myUid) {
 			this.showInfoNotification("Kimlik bilgileri eksik, işlem yapılamadı.");
@@ -471,7 +488,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		// Zaten eşleşilmişse doğrudan sohbet aç
 		if (this._isMatchedAny(targetIds)) {
-			const chatUid = targetUid || targetSessionId;
+			const chatUid = this._resolveFirebaseUid(targetSessionId) || targetUid || targetSessionId;
+			console.log("[CHAT] openChatUI çağrılıyor — chatUid:", chatUid, "targetUid:", targetUid, "targetSessionId:", targetSessionId);
 			this.openChatUI(chatUid, targetSprite.name || "Rakip");
 			return;
 		}
@@ -483,10 +501,11 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		// Colyseus bildirimini ÖNCE gönder
 		const myName = this.myData?.name || this.myData?.displayName || this.karakterim?.name || null;
 		const mySessionId = this.room.sessionId;
+		const myFirebaseUid = this._firebaseUid || myUid;
 		this.room.send("crush", {
 			targetSessionId: targetSessionId,
 			fromName: myName,
-			fromUid: myUid,
+			fromUid: myFirebaseUid,
 			fromSessionId: mySessionId
 		});
 
@@ -709,7 +728,8 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 
 		const handleSend = () => {
 			const text = inputField.value.trim();
-			const myUid = this._getMyUid();
+			const myUid = this._firebaseUid || this._getMyUid();
+			console.log("[CHAT] handleSend — myUid:", myUid, "targetUid:", window.activeChatTargetUid, "text:", text?.substring(0, 20));
 			if (text && window.activeChatTargetUid && myUid) {
 				sendSimsMessage(myUid, window.activeChatTargetUid, text);
 				inputField.value = "";
@@ -725,7 +745,10 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 	openChatUI(targetUid, targetName) {
 		const chatContainer = document.getElementById("chat-ui-container");
 		const chatMessages = document.getElementById("chat-messages");
-		const myUid = this._getMyUid();
+		const myUid = this._firebaseUid || this._getMyUid();
+		// targetUid sessionId olabilir, Firebase uid'ye çözümle
+		const resolvedTarget = this._resolveFirebaseUid(targetUid) || targetUid;
+		console.log("[CHAT] openChatUI — myUid:", myUid, "targetUid(raw):", targetUid, "resolvedTarget:", resolvedTarget);
 		if (chatContainer && myUid) {
 			// Sohbet açılınca badge'i sıfırla
 			window.unreadMessageCount = 0;
@@ -737,10 +760,10 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			if (this.badgeText) this.badgeText.setVisible(false);
 
 			chatContainer.style.display = "flex";
-			window.activeChatTargetUid = targetUid;
+			window.activeChatTargetUid = resolvedTarget;
 			chatContainer.querySelector("h3").innerText = targetName + " ile Sohbet";
 
-			listenToMessages(myUid, targetUid, (messages) => {
+			listenToMessages(myUid, resolvedTarget, (messages) => {
 				chatMessages.innerHTML = "";
 				messages.forEach(msg => {
 					const msgEl = document.createElement("div");
