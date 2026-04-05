@@ -1,32 +1,28 @@
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import {
-    getAuth, initializeAuth, indexedDBLocalPersistence,
-    GoogleAuthProvider, OAuthProvider,
-    signInWithPopup, signInWithCredential
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { firebaseConfig } from "../firebase-config.js";
 
 let _auth = null;
+let _initialized = false;
 
 function ensureFirebase() {
+    if (_initialized) return _auth;
+    _initialized = true;
+
     const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-    if (_auth) return _auth;
+    const isIOSNative = window.Capacitor && window.Capacitor.getPlatform() === 'ios';
 
-    const isNative = window.Capacitor && window.Capacitor.getPlatform() !== 'web';
-
-    if (isNative) {
-        // iOS: getAuth() kullanma — initializeAuth ile persistence ayarla
-        _auth = initializeAuth(app, {
-            persistence: indexedDBLocalPersistence
-        });
-        // Firestore'u long-polling modunda zorla başlat
+    if (isIOSNative) {
+        // iOS native: Web Auth SDK yok — Capacitor plugin yeterli
+        // Sadece Firestore'u long-polling modunda başlat
         try {
             initializeFirestore(app, {
                 experimentalForceLongPolling: true,
                 useFetchStreams: false,
             });
         } catch (e) { /* zaten başlatılmış */ }
+        // _auth = null kalır — iOS'ta Web Auth kullanılmaz
     } else {
         _auth = getAuth(app);
     }
@@ -133,21 +129,12 @@ async handleGoogleLogin() {
     async handleAppleLogin() {
         this.statusText.setText("Apple ile bağlanılıyor...");
         try {
+            // iOS: tamamen Capacitor native plugin ile auth — Web SDK yok
+            ensureFirebase(); // sadece Firestore init için
             const FirebaseAuthentication = Capacitor.Plugins.FirebaseAuthentication;
             const result = await FirebaseAuthentication.signInWithApple();
             const user = result?.user;
             const displayName = user?.displayName || user?.email || null;
-
-            // Native auth → initializeAuth'a sync et (Firestore yetkilendirme için)
-            const auth = ensureFirebase();
-            const idToken = result.credential?.idToken;
-            const rawNonce = result.credential?.nonce;
-            if (idToken) {
-                const provider = new OAuthProvider('apple.com');
-                const credential = provider.credential({ idToken, rawNonce });
-                await signInWithCredential(auth, credential);
-            }
-
             const { token } = await FirebaseAuthentication.getIdToken();
             this.scene.start("Waiting", { token, displayName });
         } catch (err) {
