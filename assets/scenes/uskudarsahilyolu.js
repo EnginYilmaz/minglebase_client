@@ -3,52 +3,54 @@
 /* START OF COMPILED CODE */
 
 class uskudarsahilyolu extends Phaser.Scene {
-  constructor() {
-    super("uskudarsahilyolu");
 
-    /* START-USER-CTR-CODE */
+	constructor() {
+		super("uskudarsahilyolu");
+
+		/* START-USER-CTR-CODE */
     // Write your code here.
     this.scalex = 0.43500281694338416;
     this.scaley = 0.7749486502826686;
     this.dilencix = 1236;
     this.dilenciy = 376;
     /* END-USER-CTR-CODE */
-  }
+	}
 
-  /** @returns {void} */
-  editorCreate() {
-    // uskudarseasight
-    const uskudarseasight = this.add.tileSprite(
-      0,
-      0,
-      1875,
-      768,
-      "uskudarseasight",
-    );
-    uskudarseasight.scaleY = 0.85;
-    uskudarseasight.setOrigin(0, 0);
+	/** @returns {void} */
+	editorCreate() {
 
-    // sprite_1
-    this.sprite_1 = this.add.sprite(1236, 376, "dilenci_yuruyor", 0);
-    this.sprite_1.setInteractive(
-      new Phaser.Geom.Rectangle(0, 0, 39, 32),
-      Phaser.Geom.Rectangle.Contains,
-    );
-    this.sprite_1.scaleX = this.scalex;
-    this.sprite_1.scaleY = this.scaley;
-    this.sprite_1.visible = false;
-    this.sprite_1.play({ key: "dilenci_yuruyor", timeScale: 1 });
+		// uskudarseasight
+		const uskudarseasight = this.add.tileSprite(0, 0, 3000, 640, "uskudarseasight");
+		uskudarseasight.setOrigin(0, 0);
+		uskudarseasight.flipX = true;
+		uskudarseasight.tintTopLeft = 11019043;
+		uskudarseasight.tintTopRight = 2304309;
 
-    // cicekci_kiz
-    this.cicekci = this.add.sprite(1875 / 2 + 150, 500, "cicekci_kiz", 0);
-    this.cicekci.setScale(0.7);
-    this.cicekci.setOrigin(0.5, 0.5);
-    this.cicekci.visible = false;
+		// cicekci
+		this.cicekci = this.add.sprite(1568, 364, "cicekci_kiz", 0);
+		this.cicekci.setInteractive(new Phaser.Geom.Rectangle(0, 0, 32, 32), Phaser.Geom.Rectangle.Contains);
+		this.cicekci.scaleX = 0.4;
+		this.cicekci.scaleY = 0.4;
+		this.cicekci.visible = false;
 
-    this.events.emit("scene-awake");
-  }
+		// sprite_1
+		this.sprite_1 = this.add.sprite(1236, 376, "dilenci_yuruyor", 0);
+		this.sprite_1.setInteractive(new Phaser.Geom.Rectangle(0, 0, 39, 32), Phaser.Geom.Rectangle.Contains);
+		this.sprite_1.scaleX = 0.43500281694338416;
+		this.sprite_1.scaleY = 0.7749486502826686;
+		this.sprite_1.visible = false;
+		this.sprite_1.play({"key":"dilenci_yuruyor","timeScale":7});
 
-  /* START-USER-CODE */
+		// sprite_2
+		const sprite_2 = this.add.sprite(1209, 333, "dilenci", 0);
+		sprite_2.setInteractive(new Phaser.Geom.Rectangle(0, 0, 32, 32), Phaser.Geom.Rectangle.Contains);
+		sprite_2.visible = false;
+		sprite_2.play("dilenci_yokluyor");
+
+		this.events.emit("scene-awake");
+	}
+
+	/* START-USER-CODE */
   cicekci_baslat() {
     this.physics.add.existing(this.cicekci);
     if (this.cicekci.body) {

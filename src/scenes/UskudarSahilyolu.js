@@ -267,7 +267,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 			this.room.send("ready");
 		}
 
-		const bgWidth = 1875;
+		const bgWidth = 2406;
 
 		// ── Kendi karakter oluştur (dinamik) ──
 		const spawnX = (this.myData && this.myData.x) ? this.myData.x : bgWidth / 2;
@@ -864,6 +864,7 @@ export default class UskudarSahilyolu extends uskudarsahilyolu {
 		sprite.setOrigin(0.5, 0.5);
 		sprite.setTint(0x4499ff);
 		sprite.setDepth(laneConf.depth);
+		this.physics.add.existing(sprite);
 		sprite.on('animationstart', () => {
 			const lc = this.LANE_CONFIG[sprite.lane] || this.LANE_CONFIG[1];
 			sprite.setDisplaySize(
